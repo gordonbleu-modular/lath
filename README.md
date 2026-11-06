@@ -2,6 +2,8 @@
 
 Tracker for the Music Thing Workshop Computer. Four drum voices, two CV and gate tracks, a mixer for the audio inputs, and delay, room and drive. The page talks to the card over USB MIDI. Patterns also preview in the browser.
 
+Web editor and control panel: (https://gordonbleu-modular.github.io/lath/)[https://gordonbleu-modular.github.io/lath/]
+
 Chrome or Edge on a computer. Web MIDI does not work on iOS.
 
 ## Use it
