@@ -314,7 +314,7 @@ function handle(d: number[]) {
 
 function clampLen(n: number) {
   if (n < 1) return 16;
-  if (n > 64) return 64;
+  if (n > 32) return 32;
   return n;
 }
 

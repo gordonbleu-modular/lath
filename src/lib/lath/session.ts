@@ -111,7 +111,7 @@ export function selectPattern(pat: number) {
 
 export function setTrackLen(tr: number, len: number) {
   const project = editProject((p) => {
-    p.trackLen[p.pattern][tr] = clamp(len, 1, 64);
+    p.trackLen[p.pattern][tr] = clamp(len, 1, 32);
   });
   sendLength(tr, project.trackLen[project.pattern][tr]);
 }

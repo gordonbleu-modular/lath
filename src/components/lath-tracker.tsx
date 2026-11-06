@@ -35,14 +35,6 @@ import type { Step } from "../lib/lath/types";
 
 const EMPTY: Step = { n: 0, v: 0, l: 0, f: 0, a: 0 };
 const NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-const RETRIG = [
-  [0, "1×"],
-  [2, "2×"],
-  [3, "3×"],
-  [4, "4×"],
-  [6, "6×"],
-  [8, "8×"],
-] as const;
 
 function Slider({
   label,
@@ -80,14 +72,11 @@ export function LathTracker() {
   const selS = useLath((s) => s.selS);
   const octave = useLath((s) => s.octave);
   const ext = useLath((s) => s.ext);
-  const [span, setSpan] = useState(32);
-  const [tab, setTab] = useState<"seq" | "sound" | "mix" | "perform">("seq");
+  const [tab, setTab] = useState<"seq" | "mix" | "perform">("seq");
   const pat = project.pattern;
   const cell = project.steps[pat][selT][selS];
   const lengths = project.trackLen[pat];
   const bank = project.scenes[project.scene] ?? project.scenes[0];
-  const pages = span > 32 ? [0, 32] : [0];
-  const rows = span > 32 ? 32 : span;
 
   useEffect(() => {
     const stored = loadStored();
@@ -176,7 +165,6 @@ export function LathTracker() {
         {(
           [
             ["seq", "Seq"],
-            ["sound", "Sound"],
             ["mix", "Mix"],
             ["perform", "Play"],
           ] as const
@@ -185,9 +173,6 @@ export function LathTracker() {
             {label}
           </button>
         ))}
-        <a className="btn" href={`${import.meta.env.BASE_URL}LATH.uf2`}>
-          UF2
-        </a>
       </header>
 
       {tab === "seq" && (
@@ -197,11 +182,6 @@ export function LathTracker() {
               {Array.from({ length: 8 }, (_, i) => (
                 <button key={i} className={i === pat ? "btn btn-accent" : "btn"} onClick={() => selectPattern(i)}>
                   {String.fromCharCode(65 + i)}
-                </button>
-              ))}
-              {[16, 32, 64].map((n) => (
-                <button key={n} className={span === n ? "btn btn-accent" : "btn"} onClick={() => setSpan(n)}>
-                  {n}
                 </button>
               ))}
               <select
@@ -222,8 +202,7 @@ export function LathTracker() {
               </select>
             </div>
             <div className="seq-body">
-              {pages.map((start) => (
-                <div key={start} className="seq-col" style={{ ["--rows" as string]: rows }}>
+              <div className="seq-col" style={{ ["--rows" as string]: 32 }}>
                   <div className="row">
                     <div className="cell step-no">#</div>
                     {TRACKS.map((tr, i) => (
@@ -248,8 +227,7 @@ export function LathTracker() {
                       </div>
                     ))}
                   </div>
-                  {Array.from({ length: rows }, (_, i) => {
-                    const step = start + i;
+                  {Array.from({ length: 32 }, (_, step) => {
                     return (
                       <div className="row" key={step}>
                         <div className="cell step-no">{String(step + 1).padStart(2, "0")}</div>
@@ -277,114 +255,93 @@ export function LathTracker() {
                     );
                   })}
                 </div>
-              ))}
             </div>
           </section>
 
           <aside className="edit">
-            <div className="flex items-baseline justify-between">
-              <h2 className="text-sm text-accent">
-                {TRACKS[selT].name} {String(selS + 1).padStart(2, "0")}
-              </h2>
-              <button className="btn" onClick={() => clearTrack(selT)}>
-                Clear
-              </button>
+            <div className="step-edit">
+              <div className="flex items-baseline justify-between">
+                <h2 className="text-sm text-accent">
+                  {TRACKS[selT].name} {String(selS + 1).padStart(2, "0")}
+                </h2>
+                <button className="btn" onClick={() => clearTrack(selT)}>
+                  Clear
+                </button>
+              </div>
+              <div className="notes" title={`Computer keys. Z is C${octave}. Comma and period move the octave.`}>
+                {NOTES.map((name, i) => {
+                  const n = (octave + 1) * 12 + i;
+                  return (
+                    <button key={name} className={cell.n === n ? "btn btn-accent" : "btn"} onClick={() => patchCell({ n, v: cell.v || 104 }, true)}>
+                      {name}
+                    </button>
+                  );
+                })}
+                <button className="btn" onClick={() => useLath.setState({ octave: Math.max(0, octave - 1) })}>
+                  −
+                </button>
+                <span className="hint self-center">C{octave}</span>
+                <button className="btn" onClick={() => useLath.setState({ octave: Math.min(6, octave + 1) })}>
+                  +
+                </button>
+                <button className="btn" onClick={() => patchCell(EMPTY)}>
+                  Rest
+                </button>
+              </div>
+              <div className="pair">
+                <Slider label="Velocity" min={1} max={127} value={cell.v || 104} onChange={(v) => patchCell({ v, n: cell.n })} />
+                <Slider label={selT < 4 ? "Length" : "Gate"} min={0} max={32} value={cell.l} onChange={(l) => patchCell({ l })} />
+                <label className="slider">
+                  Command
+                  <select className="bg-surface text-fg" value={cell.f} onChange={(e) => patchCell({ f: Number(e.target.value) })}>
+                    {FX.map((fx) => (
+                      <option key={fx.id} value={fx.id}>
+                        {fx.name === "—" ? "None" : `${fx.name} ${fx.hint.split(".")[0]}`}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <Slider label="Value" min={0} max={127} value={cell.a} onChange={(a) => patchCell({ a })} />
+                <Slider label="Tempo" min={40} max={300} value={project.bpm} onChange={setBpm} />
+                <Slider label="Swing" min={0} max={127} value={project.swing} onChange={setSwing} />
+              </div>
             </div>
-            <div className="notes" title={`Computer keys. Z is C${octave}. Comma and period move the octave.`}>
-              {NOTES.map((name, i) => {
-                const n = (octave + 1) * 12 + i;
-                return (
-                  <button key={name} className={cell.n === n ? "btn btn-accent" : "btn"} onClick={() => patchCell({ n, v: cell.v || 104 }, true)}>
-                    {name}
-                  </button>
-                );
-              })}
-              <button className="btn" onClick={() => useLath.setState({ octave: Math.max(0, octave - 1) })}>
-                −
-              </button>
-              <span className="hint self-center">C{octave}</span>
-              <button className="btn" onClick={() => useLath.setState({ octave: Math.min(6, octave + 1) })}>
-                +
-              </button>
-              <button className="btn" onClick={() => patchCell(EMPTY)}>
-                Rest
-              </button>
-            </div>
-            <Slider label="Velocity" min={1} max={127} value={cell.v || 104} onChange={(v) => patchCell({ v, n: cell.n })} />
-            <Slider label={selT < 4 ? "Length" : "Gate"} min={0} max={32} value={cell.l} onChange={(l) => patchCell({ l })} />
-            <div className="notes">
-              {RETRIG.map(([n, label]) => {
-                const on = n === 0 ? cell.f !== 1 : cell.f === 1 && cell.a === n;
-                return (
-                  <button
-                    key={label}
-                    className={on ? "btn btn-accent" : "btn"}
-                    onClick={() => {
-                      if (n === 0) {
-                        if (cell.f === 1) patchCell({ f: 0, a: 0 });
-                      } else patchCell({ f: 1, a: n, v: cell.v || 104 });
-                    }}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-            <label className="slider">
-              Command
-              <select className="bg-surface text-fg" value={cell.f} onChange={(e) => patchCell({ f: Number(e.target.value) })}>
-                {FX.map((fx) => (
-                  <option key={fx.id} value={fx.id}>
-                    {fx.name === "—" ? "None" : `${fx.name} ${fx.hint.split(".")[0]}`}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {cell.f > 0 && <Slider label="Value" min={0} max={127} value={cell.a} onChange={(a) => patchCell({ a })} />}
-            <div className="mt-auto grid gap-1">
-              <Slider label="Tempo" min={40} max={300} value={project.bpm} onChange={setBpm} />
-              <Slider label="Swing" min={0} max={127} value={project.swing} onChange={setSwing} />
+            <div className="voices">
+              <div className="voice-head">
+                <span className="text-sm text-accent">Sounds</span>
+                <Banks scene={project.scene} />
+              </div>
+              {TRACKS.slice(0, 4).map((tr, i) => (
+                <section key={tr.id} className="voice">
+                  <h2 className="text-sm text-accent">
+                    {tr.name} <span className="text-muted">{tr.role}</span>
+                  </h2>
+                  <Slider label="Decay" min={1} max={127} value={bank.voice[i].decay} onChange={(v) => setVoice(i, "decay", v)} />
+                  <Slider label="Tone" min={0} max={127} value={bank.voice[i].tone} onChange={(v) => setVoice(i, "tone", v)} />
+                  <Slider label="Pitch" min={0} max={48} value={bank.voice[i].pitch} onChange={(v) => setVoice(i, "pitch", v)} />
+                  <Slider
+                    label={i === 0 ? "Click" : i === 1 ? "Noise" : i === 2 ? "Wires" : "Bite"}
+                    min={0}
+                    max={127}
+                    value={bank.voice[i].aux}
+                    onChange={(v) => setVoice(i, "aux", v)}
+                  />
+                  {i === 3 && (
+                    <label className="slider span2">
+                      Model
+                      <select className="bg-surface text-fg" value={bank.voice[3].model} onChange={(e) => setVoice(3, "model", Number(e.target.value))}>
+                        {MODELS.map((name, mi) => (
+                          <option key={name} value={mi}>
+                            {name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                </section>
+              ))}
             </div>
           </aside>
-        </div>
-      )}
-
-      {tab === "sound" && (
-        <div className="pane">
-          <div className="bar" style={{ padding: 0, border: 0 }}>
-            <Banks scene={project.scene} />
-          </div>
-          <div className="sound-grid">
-            {TRACKS.slice(0, 4).map((tr, i) => (
-              <section key={tr.id} className="card">
-                <h2 className="text-sm text-accent">
-                  {tr.name} <span className="text-muted">{tr.role}</span>
-                </h2>
-                <Slider label="Decay" min={1} max={127} value={bank.voice[i].decay} onChange={(v) => setVoice(i, "decay", v)} />
-                <Slider label="Tone" min={0} max={127} value={bank.voice[i].tone} onChange={(v) => setVoice(i, "tone", v)} />
-                <Slider label="Pitch" min={0} max={48} value={bank.voice[i].pitch} onChange={(v) => setVoice(i, "pitch", v)} />
-                <Slider
-                  label={i === 0 ? "Click" : i === 1 ? "Noise" : i === 2 ? "Snare" : "Bite"}
-                  min={0}
-                  max={127}
-                  value={bank.voice[i].aux}
-                  onChange={(v) => setVoice(i, "aux", v)}
-                />
-                {i === 3 && (
-                  <label className="slider">
-                    Model
-                    <select className="bg-surface text-fg" value={bank.voice[3].model} onChange={(e) => setVoice(3, "model", Number(e.target.value))}>
-                      {MODELS.map((name, mi) => (
-                        <option key={name} value={mi}>
-                          {name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-              </section>
-            ))}
-          </div>
         </div>
       )}
 

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { factoryProject } from "./factory";
 import type { Project, Scene } from "./types";
+import { clamp } from "./types";
 
 const KEY = "lath.project.v1";
 
@@ -86,5 +87,8 @@ export function normalize(project: Project): Project {
   if (!project.song?.length) project.song = [0, 1, 2];
   if (project.songAt == null) project.songAt = 0;
   if (project.pending == null) project.pending = -1;
+  for (const row of project.trackLen) {
+    for (let t = 0; t < row.length; t++) row[t] = clamp(row[t], 1, 32);
+  }
   return project;
 }

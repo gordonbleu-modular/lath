@@ -119,7 +119,8 @@ function createEngine(sr) {
       v.ksLen = clamp(Math.floor(sr / Math.max(40, f)), 12, 1000);
       v.ksPos = 0;
       v.ksLast = 0;
-      for (let i = 0; i < v.ksLen; i++) v.ks[i] = noise() * 0.8;
+      for (let i = 0; i < v.ksLen; i++) v.ks[i] = noise() * 0.2;
+      v.ks[0] = 0.85;
     }
   }
 
@@ -246,31 +247,46 @@ function createEngine(sr) {
       s = x - v.lp;
     } else if (t === 2) {
       const a = v.ks[v.ksPos];
-      let avg = (a + v.ksLast) * 0.5 * (0.9 + (1 - v.tone) * 0.09);
+      let avg = (a + v.ksLast) * 0.5;
+      avg *= 0.86 + v.tone * 0.13;
       v.ks[v.ksPos] = avg;
       v.ksLast = a;
       v.ksPos++;
       if (v.ksPos >= v.ksLen) v.ksPos = 0;
+      v.phase += (2 * Math.PI * v.target) / sr;
+      const head = Math.sin(v.phase) * 0.35;
       const nz = noise();
-      v.lp += (nz - v.lp) * 0.18;
-      const bp = nz - v.lp;
-      s = avg * (1 - v.aux) * 1.4 + bp * v.aux * (0.35 + v.click);
-      v.click *= 0.96;
+      v.lp += (nz - v.lp) * 0.55;
+      const hp = nz - v.lp;
+      v.click *= 0.997 + v.aux * 0.00293;
+      s = head + avg * 1.15 + hp * v.click * v.aux * 1.7;
     } else {
       const model = v.model;
-      const glide = model === 2 ? 0.004 : 0.0012;
-      v.freq += (v.target - v.freq) * glide;
-      const ratio = model === 0 ? 2.4 : model === 1 ? 0.5 : model === 3 ? 0.75 : 1.2;
-      v.mod += (2 * Math.PI * v.freq * ratio) / sr;
-      const mod = Math.sin(v.mod);
-      const index = v.env * (model === 1 ? 0.4 : 1.2 + v.tone * 4);
-      v.phase += (2 * Math.PI * (v.freq + mod * v.freq * index * 0.35)) / sr;
-      s = Math.sin(v.phase);
-      if (model === 1) {
-        s = s * 0.6 + noise() * v.click * 0.5;
-        v.click *= 0.8;
+      if (model === 0) {
+        v.freq += (v.target - v.freq) * 0.0012;
+        v.mod += (2 * Math.PI * v.freq * 2.73) / sr;
+        const mod = Math.sin(v.mod);
+        const index = v.env * (2.4 + v.tone * 6);
+        v.phase += (2 * Math.PI * (v.freq + mod * v.freq * index * 0.22)) / sr;
+        const partial = Math.sin(v.phase * 5.31);
+        s = Math.tanh((Math.sin(v.phase) * 0.78 + partial * 0.28) * (1.2 + v.aux));
+      } else if (model === 1) {
+        v.phase += (2 * Math.PI * v.target * 0.5) / sr;
+        const knock = noise() * v.click;
+        v.click *= 0.72;
+        const x = Math.sin(v.phase) * 0.55 + knock * 0.9;
+        v.lp += (x - v.lp) * 0.16;
+        s = v.lp;
+      } else {
+        const glide = model === 2 ? 0.004 : 0.0012;
+        v.freq += (v.target - v.freq) * glide;
+        const ratio = model === 3 ? 0.75 : 1.2;
+        v.mod += (2 * Math.PI * v.freq * ratio) / sr;
+        const mod = Math.sin(v.mod);
+        const index = v.env * (1.2 + v.tone * 4);
+        v.phase += (2 * Math.PI * (v.freq + mod * v.freq * index * 0.35)) / sr;
+        s = Math.tanh(Math.sin(v.phase) * (1 + v.aux));
       }
-      s = Math.tanh(s * (1 + v.aux));
     }
     if (v.crush > 0.05) {
       const n = 1 + ((v.crush * 14) | 0);
