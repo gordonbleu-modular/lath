@@ -117,10 +117,10 @@ export function factoryProject(): Project {
     ],
     mute: [0,0,0,0,0,0],
     voice: [
-      { decay: 78, tone: 42, model: 0, pitch: 24, aux: 90 },
-      { decay: 26, tone: 100, model: 0, pitch: 24, aux: 48 },
-      { decay: 58, tone: 64, model: 0, pitch: 24, aux: 88 },
-      { decay: 48, tone: 72, model: 0, pitch: 24, aux: 80 },
+      { decay: 78, tone: 42, model: 0, pitch: 24, aux: 90, sendD: 0, sendR: 0 },
+      { decay: 26, tone: 100, model: 0, pitch: 24, aux: 48, sendD: 0, sendR: 0 },
+      { decay: 58, tone: 64, model: 0, pitch: 24, aux: 88, sendD: 0, sendR: 0 },
+      { decay: 48, tone: 72, model: 0, pitch: 24, aux: 80, sendD: 0, sendR: 0 },
     ],
     mix: [
       { level: 110, pan: 64 },
@@ -154,10 +154,10 @@ export function factoryProject(): Project {
 function threeScenes(): Scene[] {
   const a: Scene = {
     voice: [
-      { decay: 78, tone: 42, model: 0, pitch: 24, aux: 90 },
-      { decay: 26, tone: 100, model: 0, pitch: 24, aux: 48 },
-      { decay: 58, tone: 64, model: 0, pitch: 24, aux: 88 },
-      { decay: 48, tone: 72, model: 0, pitch: 24, aux: 80 },
+      { decay: 78, tone: 42, model: 0, pitch: 24, aux: 90, sendD: 0, sendR: 0 },
+      { decay: 26, tone: 100, model: 0, pitch: 24, aux: 48, sendD: 0, sendR: 0 },
+      { decay: 58, tone: 64, model: 0, pitch: 24, aux: 88, sendD: 0, sendR: 0 },
+      { decay: 48, tone: 72, model: 0, pitch: 24, aux: 80, sendD: 0, sendR: 0 },
     ],
     mix: [
       { level: 110, pan: 64 },

@@ -80,6 +80,7 @@ function sceneBytes(scene: Scene): number[] {
   bytes.push(scene.master & 127, scene.delay.time & 7, scene.delay.fb & 127, scene.delay.mix & 127);
   bytes.push(scene.room.size & 127, scene.room.damp & 127, scene.room.mix & 127, scene.drive & 127);
   for (const s of scene.inSend) bytes.push(s.d & 127, s.r & 127);
+  for (const v of scene.voice) bytes.push((v.sendD || 0) & 127, (v.sendR || 0) & 127);
   return bytes;
 }
 
@@ -108,7 +109,7 @@ export function sendQueue() {
 function readScene(d: number[], i: number): { scene: Scene; next: number } {
   const voice = [];
   for (let v = 0; v < 4; v++) {
-    voice.push({ decay: d[i++], tone: d[i++], model: d[i++] & 3, pitch: d[i++], aux: d[i++] });
+    voice.push({ decay: d[i++], tone: d[i++], model: d[i++] & 3, pitch: d[i++], aux: d[i++], sendD: 0, sendR: 0 });
   }
   const mix = [];
   for (let c = 0; c < 6; c++) mix.push({ level: d[i++], pan: d[i++] });
@@ -124,6 +125,10 @@ function readScene(d: number[], i: number): { scene: Scene; next: number } {
       { d: d[i++], r: d[i++] },
     ],
   };
+  for (let v = 0; v < 4; v++) {
+    voice[v].sendD = i < d.length ? d[i++] : 0;
+    voice[v].sendR = i < d.length ? d[i++] : 0;
+  }
   return { scene, next: i };
 }
 
@@ -213,6 +218,8 @@ function handle(d: number[]) {
         model: d[i++] & 3,
         pitch: d[i++],
         aux: d[i++],
+        sendD: project.voice[v]?.sendD || 0,
+        sendR: project.voice[v]?.sendR || 0,
       };
     }
     for (let c = 0; c < 6; c++) project.mix[c] = { level: d[i++], pan: d[i++] };

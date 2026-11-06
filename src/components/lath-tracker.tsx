@@ -72,7 +72,6 @@ export function LathTracker() {
   const selS = useLath((s) => s.selS);
   const octave = useLath((s) => s.octave);
   const ext = useLath((s) => s.ext);
-  const [tab, setTab] = useState<"seq" | "mix">("seq");
   const pat = project.pattern;
   const cell = project.steps[pat][selT][selS];
   const lengths = project.trackLen[pat];
@@ -164,20 +163,9 @@ export function LathTracker() {
           <Save size={12} />
           Save
         </button>
-        {(
-          [
-            ["seq", "Seq"],
-            ["mix", "Mix"],
-          ] as const
-        ).map(([id, label]) => (
-          <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? "btn btn-accent" : "btn"} onClick={() => setTab(id)}>
-            {label}
-          </button>
-        ))}
       </header>
 
-      {tab === "seq" && (
-        <div className="fit">
+      <div className="stage">
           <section className="seq">
             <div className="bar">
               <span className="hint">Pattern</span>
@@ -189,6 +177,7 @@ export function LathTracker() {
               <button className="btn" onClick={() => clearPattern()} aria-label="Clear this pattern">
                 Clear
               </button>
+              <Banks scene={project.scene} />
               <select
                 aria-label="Copy to"
                 className="ml-auto"
@@ -308,156 +297,92 @@ export function LathTracker() {
                 <Slider label="Value" min={0} max={127} value={cell.a} onChange={(a) => patchCell({ a })} />
               </div>
             </div>
-            <div className="voices">
-              <div className="voice-head">
-                <span className="text-sm text-accent">Sounds</span>
-                <Banks scene={project.scene} />
-              </div>
-              {TRACKS.slice(0, 4).map((tr, i) => (
-                <section key={tr.id} className="voice">
-                  <h2 className="text-sm text-accent">
-                    {tr.name} <span className="text-muted">{tr.role}</span>
-                  </h2>
-                  <Slider label="Decay" min={1} max={127} value={bank.voice[i].decay} onChange={(v) => setVoice(i, "decay", v)} />
-                  <Slider label="Tone" min={0} max={127} value={bank.voice[i].tone} onChange={(v) => setVoice(i, "tone", v)} />
-                  <Slider label="Pitch" min={0} max={48} value={bank.voice[i].pitch} onChange={(v) => setVoice(i, "pitch", v)} />
-                  <Slider
-                    label={i === 0 ? "Click" : i === 1 ? "Noise" : i === 2 ? "Wires" : "Bite"}
-                    min={0}
-                    max={127}
-                    value={bank.voice[i].aux}
-                    onChange={(v) => setVoice(i, "aux", v)}
-                  />
-                  {i === 3 && (
-                    <label className="slider span2">
-                      Model
-                      <select className="bg-surface text-fg" value={bank.voice[3].model} onChange={(e) => setVoice(3, "model", Number(e.target.value))}>
-                        {MODELS.map((name, mi) => (
-                          <option key={name} value={mi}>
-                            {name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  )}
-                </section>
-              ))}
-            </div>
           </aside>
-        </div>
-      )}
 
-      {tab === "mix" && (
-        <div className="desk">
-          <div className="strips">
+        <footer className="bottom">
+          <div className="chans">
             {TRACKS.slice(0, 4).map((tr, i) => (
-              <Strip key={tr.id} name={tr.name} level={bank.mix[i].level} pan={bank.mix[i].pan} onLevel={(v) => setMix(i, "level", v)} onPan={(v) => setMix(i, "pan", v)} />
+              <Instrument key={tr.id} name={tr.name} voice={bank.voice[i]} i={i} level={bank.mix[i].level} pan={bank.mix[i].pan} />
             ))}
             {["In 1", "In 2"].map((label, i) => (
-              <Strip
-                key={label}
-                name={label}
-                level={bank.mix[4 + i].level}
-                pan={bank.mix[4 + i].pan}
-                onLevel={(v) => setMix(4 + i, "level", v)}
-                onPan={(v) => setMix(4 + i, "pan", v)}
-                delay={bank.inSend[i].d}
-                room={bank.inSend[i].r}
-                onDelay={(v) => setInSend(i, "d", v)}
-                onRoom={(v) => setInSend(i, "r", v)}
-              />
+              <section key={label} className="chan jack">
+                <h2>{label}</h2>
+                <div className="chan-grid jack-grid">
+                  <Fader label="Vol" min={0} max={127} value={bank.mix[4 + i].level} onChange={(v) => setMix(4 + i, "level", v)} />
+                  <Knob pan label="Pan" min={0} max={127} value={bank.mix[4 + i].pan} onChange={(v) => setMix(4 + i, "pan", v)} />
+                  <Knob label="Dly" min={0} max={127} value={bank.inSend[i].d} onChange={(v) => setInSend(i, "d", v)} />
+                  <Knob label="Rm" min={0} max={127} value={bank.inSend[i].r} onChange={(v) => setInSend(i, "r", v)} />
+                </div>
+              </section>
             ))}
-            <section className="strip">
+            <section className="chan master">
               <h2>Master</h2>
-              <Fader label="Level" min={0} max={127} value={bank.master} onChange={setMaster} />
+              <Fader label="Vol" min={0} max={127} value={bank.master} onChange={setMaster} />
             </section>
           </div>
-          <aside className="fx-desk">
-            <div className="voice-head">
-              <span className="text-sm text-accent">Effects</span>
-              <Banks scene={project.scene} />
-            </div>
-            <div className="fx-groups">
-              <section className="fx-group">
-                <h3>Delay</h3>
-                <label className="slider">
-                  Time
-                  <select className="bg-surface text-fg" value={bank.delay.time} onChange={(e) => setDelay("time", Number(e.target.value))}>
-                    {DELAY_TIMES.map((name, i) => (
-                      <option key={name} value={i}>
-                        {name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <div className="fx-knobs">
-                  <Knob label="Feedback" min={0} max={127} value={bank.delay.fb} onChange={(v) => setDelay("fb", v)} />
-                  <Knob label="Send" min={0} max={127} value={bank.delay.mix} onChange={(v) => setDelay("mix", v)} />
-                </div>
-              </section>
-              <section className="fx-group">
-                <h3>Room</h3>
-                <div className="fx-knobs">
-                  <Knob label="Size" min={0} max={127} value={bank.room.size} onChange={(v) => setRoom("size", v)} />
-                  <Knob label="Damp" min={0} max={127} value={bank.room.damp} onChange={(v) => setRoom("damp", v)} />
-                  <Knob label="Send" min={0} max={127} value={bank.room.mix} onChange={(v) => setRoom("mix", v)} />
-                </div>
-              </section>
-              <section className="fx-group">
-                <h3>Drive</h3>
-                <div className="fx-knobs">
-                  <Knob label="Amount" min={0} max={127} value={bank.drive} onChange={setDrive} />
-                </div>
-              </section>
-            </div>
-            <div className="voice-head">
-              <span className="text-sm text-accent">Panel</span>
-            </div>
-            <div className="panel-row">
-              <Slider label={connected ? "Main knob" : "Morph"} min={0} max={127} value={project.morph} disabled={connected} onChange={setMorph} />
+          <div className="fx-groups">
+            <section className="fx-group">
+              <h3>Delay</h3>
               <label className="slider">
-                Knob X
-                <select className="bg-surface text-fg" value={project.knobX} onChange={(e) => setKnob("knobX", Number(e.target.value))}>
-                  {KNOB_TARGETS.map((name, i) => (
+                Time
+                <select className="bg-surface text-fg" value={bank.delay.time} onChange={(e) => setDelay("time", Number(e.target.value))}>
+                  {DELAY_TIMES.map((name, i) => (
                     <option key={name} value={i}>
                       {name}
                     </option>
                   ))}
                 </select>
               </label>
-              <label className="slider">
-                Knob Y
-                <select className="bg-surface text-fg" value={project.knobY} onChange={(e) => setKnob("knobY", Number(e.target.value))}>
-                  {KNOB_TARGETS.map((name, i) => (
-                    <option key={name} value={i}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
+              <div className="fx-knobs">
+                <Knob label="Feedback" min={0} max={127} value={bank.delay.fb} onChange={(v) => setDelay("fb", v)} />
+                <Knob label="Send" min={0} max={127} value={bank.delay.mix} onChange={(v) => setDelay("mix", v)} />
+              </div>
+            </section>
+            <section className="fx-group">
+              <h3>Room</h3>
+              <div className="fx-knobs">
+                <Knob label="Size" min={0} max={127} value={bank.room.size} onChange={(v) => setRoom("size", v)} />
+                <Knob label="Damp" min={0} max={127} value={bank.room.damp} onChange={(v) => setRoom("damp", v)} />
+                <Knob label="Send" min={0} max={127} value={bank.room.mix} onChange={(v) => setRoom("mix", v)} />
+              </div>
+            </section>
+            <section className="fx-group">
+              <h3>Drive</h3>
+              <div className="fx-knobs">
+                <Knob label="Amount" min={0} max={127} value={bank.drive} onChange={setDrive} />
+              </div>
+            </section>
+          </div>
+          <section className="hw">
+            <h2 className="text-sm text-accent">Panel</h2>
+            <Slider label={connected ? "Main knob" : "Morph"} min={0} max={127} value={project.morph} disabled={connected} onChange={setMorph} />
+            <label className="slider">
+              Knob X
+              <select className="bg-surface text-fg" value={project.knobX} onChange={(e) => setKnob("knobX", Number(e.target.value))}>
+                {KNOB_TARGETS.map((name, i) => (
+                  <option key={name} value={i}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="slider">
+              Knob Y
+              <select className="bg-surface text-fg" value={project.knobY} onChange={(e) => setKnob("knobY", Number(e.target.value))}>
+                {KNOB_TARGETS.map((name, i) => (
+                  <option key={name} value={i}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="hint flex items-center gap-2">
               <input type="checkbox" checked={ext} onChange={(e) => setExt(e.target.checked)} />
-              External clock. Pulse in 1 steps, pulse in 2 resets.
+              Ext clock
             </label>
-            <div className="voice-head">
-              <span className="text-sm text-accent">Song</span>
-              <span className="flex gap-1">
-                <button className="btn" disabled={project.song.length >= 16} onClick={addSongStep}>
-                  Add
-                </button>
-                <button className="btn" onClick={() => queueNext()}>
-                  Queue
-                </button>
-              </span>
-            </div>
-            <div className="song span2">
+            <div className="song">
               {project.song.map((stepPat, i) => (
                 <div key={i} className={`song-step ${project.songAt === i ? "now" : ""}`}>
-                  <span className="hint">
-                    {i + 1}
-                    {project.pending === i ? " cue" : project.songAt === i ? " now" : ""}
-                  </span>
                   <select className="bg-surface text-fg" value={stepPat} onChange={(e) => setSongStep(i, Number(e.target.value))}>
                     {["A", "B", "C", "D", "E", "F", "G", "H"].map((name, n) => (
                       <option key={name} value={n}>
@@ -470,11 +395,60 @@ export function LathTracker() {
                   </button>
                 </div>
               ))}
+              <button className="btn" disabled={project.song.length >= 16} onClick={addSongStep}>
+                Add
+              </button>
+              <button className="btn" onClick={() => queueNext()}>
+                Queue
+              </button>
             </div>
-          </aside>
-        </div>
-      )}
+          </section>
+        </footer>
+      </div>
     </main>
+  );
+}
+
+
+function Instrument({
+  name,
+  i,
+  voice,
+  level,
+  pan,
+}: {
+  name: string;
+  i: number;
+  voice: { decay: number; tone: number; pitch: number; aux: number; model: number; sendD: number; sendR: number };
+  level: number;
+  pan: number;
+}) {
+  const aux = i === 0 ? "Click" : i === 1 ? "Noise" : i === 2 ? "Wires" : "Bite";
+  return (
+    <section className="chan">
+      <h2>
+        {name}
+        {i === 3 ? (
+          <select aria-label="Model" value={voice.model} onChange={(e) => setVoice(3, "model", Number(e.target.value))}>
+            {MODELS.map((model, mi) => (
+              <option key={model} value={mi}>
+                {model}
+              </option>
+            ))}
+          </select>
+        ) : null}
+      </h2>
+      <div className="chan-grid">
+        <Fader label="Vol" min={0} max={127} value={level} onChange={(v) => setMix(i, "level", v)} />
+        <Knob pan label="Pan" min={0} max={127} value={pan} onChange={(v) => setMix(i, "pan", v)} />
+        <Knob label="Dly" min={0} max={127} value={voice.sendD || 0} onChange={(v) => setVoice(i, "sendD", v)} />
+        <Knob label="Rm" min={0} max={127} value={voice.sendR || 0} onChange={(v) => setVoice(i, "sendR", v)} />
+        <Knob label="Decay" min={1} max={127} value={voice.decay} onChange={(v) => setVoice(i, "decay", v)} />
+        <Knob label="Tone" min={0} max={127} value={voice.tone} onChange={(v) => setVoice(i, "tone", v)} />
+        <Knob label="Pitch" min={0} max={48} value={voice.pitch} onChange={(v) => setVoice(i, "pitch", v)} />
+        <Knob label={aux} min={0} max={127} value={voice.aux} onChange={(v) => setVoice(i, "aux", v)} />
+      </div>
+    </section>
   );
 }
 

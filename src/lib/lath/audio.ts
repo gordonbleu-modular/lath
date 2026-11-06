@@ -35,8 +35,7 @@ export async function ensureAudio() {
 async function boot() {
   const c = audioContext();
   if (c.state !== "running") void c.resume();
-  const worklet = new URL(`${import.meta.env.BASE_URL}lath-worklet.js`, window.location.href);
-  await c.audioWorklet.addModule(worklet.href);
+  await c.audioWorklet.addModule(new URL("lath-worklet.js", document.baseURI).href);
   node = new AudioWorkletNode(c, "lath", { outputChannelCount: [2] });
   node.connect(c.destination);
   node.port.onmessage = (event) => {

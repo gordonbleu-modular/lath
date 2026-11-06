@@ -90,5 +90,11 @@ export function normalize(project: Project): Project {
   for (const row of project.trackLen) {
     for (let t = 0; t < row.length; t++) row[t] = clamp(row[t], 1, 32);
   }
+  for (const scene of project.scenes) {
+    for (const v of scene.voice) {
+      if (v.sendD == null) v.sendD = 0;
+      if (v.sendR == null) v.sendR = 0;
+    }
+  }
   return project;
 }

@@ -136,7 +136,7 @@ export function writeStep(tr: number, st: number, cell: Step, audition = false) 
   }
 }
 
-export function setVoice(i: number, key: "decay" | "tone" | "model" | "pitch" | "aux", value: number) {
+export function setVoice(i: number, key: "decay" | "tone" | "model" | "pitch" | "aux" | "sendD" | "sendR", value: number) {
   editScene((scene) => {
     scene.voice[i][key] = value;
   });

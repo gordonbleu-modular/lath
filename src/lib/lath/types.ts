@@ -13,6 +13,8 @@ export type Voice = {
   model: number;
   pitch: number;
   aux: number;
+  sendD: number;
+  sendR: number;
 };
 
 export type MixCh = { level: number; pan: number };

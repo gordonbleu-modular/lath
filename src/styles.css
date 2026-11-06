@@ -130,11 +130,132 @@ select {
   font-size: 0.62rem;
 }
 
-.fit {
+.stage {
   display: grid;
-  flex: 1;
   min-height: 0;
-  grid-template-columns: minmax(0, 1.05fr) minmax(22rem, 0.95fr);
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr) 15.5rem;
+  grid-template-rows: minmax(0, 1fr) 9.4rem;
+  overflow: hidden;
+}
+
+.stage > .seq {
+  grid-column: 1;
+  grid-row: 1;
+  min-height: 0;
+}
+
+.stage > .edit {
+  grid-column: 2;
+  grid-row: 1;
+  min-height: 0;
+}
+
+.bottom {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-row: 2;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1.7fr) minmax(15rem, 0.85fr) 12.5rem;
+  border-top: 1px solid var(--color-border);
+  overflow: hidden;
+}
+
+.chans {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 1.55fr 1.55fr 1.55fr 1.55fr 0.85fr 0.85fr 0.48fr;
+}
+
+.chan {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  gap: 0.1rem;
+  border-right: 1px solid var(--color-border);
+  padding: 0.2rem 0.2rem 0.15rem;
+}
+
+.chan h2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.2rem;
+  font-size: 0.62rem;
+  line-height: 1;
+  color: var(--color-accent);
+}
+
+.chan h2 select {
+  max-width: 4.2rem;
+  min-height: 1rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-fg);
+  font: inherit;
+  font-size: 0.55rem;
+}
+
+.chan-grid {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: 1.15rem repeat(4, minmax(0, 1fr));
+  grid-template-rows: 1fr 1fr;
+  gap: 0.05rem 0.1rem;
+}
+
+.chan-grid .fader {
+  grid-row: 1 / span 2;
+}
+
+.jack-grid {
+  grid-template-columns: 1.15rem repeat(2, minmax(0, 1fr));
+}
+
+.chan .fader-range {
+  min-height: 0;
+}
+
+.chan .knob {
+  width: auto;
+  font-size: 0.5rem;
+}
+
+.chan .knob-cap {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.master .fader {
+  flex: 1;
+}
+
+.hw {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  gap: 0.15rem;
+  overflow: hidden;
+  padding: 0.2rem 0.35rem;
+}
+
+.hw .song {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.bottom .fx-groups {
+  min-height: 0;
+  align-items: stretch;
+  padding: 0.2rem;
+  gap: 0.35rem;
+}
+
+.bottom .fx-group {
+  min-height: 0;
+  overflow: hidden;
 }
 
 .seq {

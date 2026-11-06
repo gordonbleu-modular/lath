@@ -318,6 +318,8 @@ function createEngine(sr) {
         model: t < 64 ? v.model : b.voice[i].model,
         pitch: lerp(v.pitch, b.voice[i].pitch, t),
         aux: lerp(v.aux, b.voice[i].aux, t),
+        sendD: lerp(v.sendD || 0, b.voice[i].sendD || 0, t),
+        sendR: lerp(v.sendR || 0, b.voice[i].sendR || 0, t),
       })),
       mix: a.mix.map((c, i) => ({
         level: lerp(c.level, b.mix[i].level, t),
@@ -375,6 +377,9 @@ function createEngine(sr) {
       bus += s * 0.5;
       extraD += s * vox[t].sendD;
       extraB += s * vox[t].sendB;
+      const vs = project.voice[t] || {};
+      extraD += s * ((vs.sendD || 0) / 127);
+      extraB += s * ((vs.sendR || 0) / 127);
     }
     // Stand-in oscillators so the CV tracks are audible without the modular.
     let cvL = 0;
