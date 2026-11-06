@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Minus, Play, Plus, RotateCcw, Save, Square, Usb } from "lucide-react";
 import { connectCard, sendSave } from "../lib/lath/midi";
 import {
-  clearTrack,
+  clearPattern,
   copyPattern,
   rewind,
   selectPattern,
@@ -72,7 +72,7 @@ export function LathTracker() {
   const selS = useLath((s) => s.selS);
   const octave = useLath((s) => s.octave);
   const ext = useLath((s) => s.ext);
-  const [tab, setTab] = useState<"seq" | "mix" | "perform">("seq");
+  const [tab, setTab] = useState<"seq" | "mix">("seq");
   const pat = project.pattern;
   const cell = project.steps[pat][selT][selS];
   const lengths = project.trackLen[pat];
@@ -147,6 +147,8 @@ export function LathTracker() {
         <button className="btn" onClick={() => void rewind()} aria-label="Back to the first step">
           <RotateCcw size={12} />
         </button>
+        <Num label="Tempo" value={project.bpm} min={40} max={300} onChange={setBpm} />
+        <Num label="Swing" value={project.swing} min={0} max={127} onChange={setSwing} />
         <button className="btn" onClick={() => void connectCard().catch(() => useLath.setState({ status: "MIDI permission was blocked." }))}>
           <Usb size={12} />
           {connected ? "On" : "Connect"}
@@ -166,7 +168,6 @@ export function LathTracker() {
           [
             ["seq", "Seq"],
             ["mix", "Mix"],
-            ["perform", "Play"],
           ] as const
         ).map(([id, label]) => (
           <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? "btn btn-accent" : "btn"} onClick={() => setTab(id)}>
@@ -179,11 +180,15 @@ export function LathTracker() {
         <div className="fit">
           <section className="seq">
             <div className="bar">
+              <span className="hint">Pattern</span>
               {Array.from({ length: 8 }, (_, i) => (
                 <button key={i} className={i === pat ? "btn btn-accent" : "btn"} onClick={() => selectPattern(i)}>
                   {String.fromCharCode(65 + i)}
                 </button>
               ))}
+              <button className="btn" onClick={() => clearPattern()} aria-label="Clear this pattern">
+                Clear
+              </button>
               <select
                 aria-label="Copy to"
                 className="ml-auto"
@@ -260,14 +265,9 @@ export function LathTracker() {
 
           <aside className="edit">
             <div className="step-edit">
-              <div className="flex items-baseline justify-between">
-                <h2 className="text-sm text-accent">
-                  {TRACKS[selT].name} {String(selS + 1).padStart(2, "0")}
-                </h2>
-                <button className="btn" onClick={() => clearTrack(selT)}>
-                  Clear
-                </button>
-              </div>
+              <h2 className="text-sm text-accent">
+                {TRACKS[selT].name} {String(selS + 1).padStart(2, "0")}
+              </h2>
               <div className="notes" title={`Computer keys. Z is C${octave}. Comma and period move the octave.`}>
                 {NOTES.map((name, i) => {
                   const n = (octave + 1) * 12 + i;
@@ -302,8 +302,6 @@ export function LathTracker() {
                   </select>
                 </label>
                 <Slider label="Value" min={0} max={127} value={cell.a} onChange={(a) => patchCell({ a })} />
-                <Slider label="Tempo" min={40} max={300} value={project.bpm} onChange={setBpm} />
-                <Slider label="Swing" min={0} max={127} value={project.swing} onChange={setSwing} />
               </div>
             </div>
             <div className="voices">
@@ -346,31 +344,37 @@ export function LathTracker() {
       )}
 
       {tab === "mix" && (
-        <div className="pane">
-          <div className="bar" style={{ padding: 0, border: 0 }}>
-            <Banks scene={project.scene} />
-          </div>
+        <div className="desk">
           <div className="strips">
             {TRACKS.slice(0, 4).map((tr, i) => (
-              <section key={tr.id} className="card">
-                <h2 className="text-sm text-fg">{tr.name}</h2>
-                <Slider label="Level" min={0} max={127} value={bank.mix[i].level} onChange={(v) => setMix(i, "level", v)} />
-                <Slider label="Pan" min={0} max={127} value={bank.mix[i].pan} onChange={(v) => setMix(i, "pan", v)} />
-              </section>
+              <Strip key={tr.id} name={tr.name} level={bank.mix[i].level} pan={bank.mix[i].pan} onLevel={(v) => setMix(i, "level", v)} onPan={(v) => setMix(i, "pan", v)} />
             ))}
             {["In 1", "In 2"].map((label, i) => (
-              <section key={label} className="card">
-                <h2 className="text-sm text-fg">{label}</h2>
-                <Slider label="Level" min={0} max={127} value={bank.mix[4 + i].level} onChange={(v) => setMix(4 + i, "level", v)} />
-                <Slider label="Pan" min={0} max={127} value={bank.mix[4 + i].pan} onChange={(v) => setMix(4 + i, "pan", v)} />
-                <Slider label="Delay" min={0} max={127} value={bank.inSend[i].d} onChange={(v) => setInSend(i, "d", v)} />
-                <Slider label="Room" min={0} max={127} value={bank.inSend[i].r} onChange={(v) => setInSend(i, "r", v)} />
-              </section>
+              <Strip
+                key={label}
+                name={label}
+                level={bank.mix[4 + i].level}
+                pan={bank.mix[4 + i].pan}
+                onLevel={(v) => setMix(4 + i, "level", v)}
+                onPan={(v) => setMix(4 + i, "pan", v)}
+                delay={bank.inSend[i].d}
+                room={bank.inSend[i].r}
+                onDelay={(v) => setInSend(i, "d", v)}
+                onRoom={(v) => setInSend(i, "r", v)}
+              />
             ))}
+            <section className="strip">
+              <h2>Master</h2>
+              <Fader label="Level" min={0} max={127} value={bank.master} onChange={setMaster} />
+            </section>
           </div>
-          <div className="strips" style={{ flex: "none", gridTemplateColumns: "repeat(8, minmax(0, 1fr))" }}>
-            <label className="slider">
-              Delay
+          <aside className="fx-desk">
+            <div className="voice-head">
+              <span className="text-sm text-accent">Effects</span>
+              <Banks scene={project.scene} />
+            </div>
+            <label className="slider span2">
+              Delay time
               <select className="bg-surface text-fg" value={bank.delay.time} onChange={(e) => setDelay("time", Number(e.target.value))}>
                 {DELAY_TIMES.map((name, i) => (
                   <option key={name} value={i}>
@@ -379,87 +383,72 @@ export function LathTracker() {
                 ))}
               </select>
             </label>
-            <Slider label="Feedback" min={0} max={127} value={bank.delay.fb} onChange={(v) => setDelay("fb", v)} />
-            <Slider label="Drum delay" min={0} max={127} value={bank.delay.mix} onChange={(v) => setDelay("mix", v)} />
-            <Slider label="Room size" min={0} max={127} value={bank.room.size} onChange={(v) => setRoom("size", v)} />
-            <Slider label="Damp" min={0} max={127} value={bank.room.damp} onChange={(v) => setRoom("damp", v)} />
-            <Slider label="Drum room" min={0} max={127} value={bank.room.mix} onChange={(v) => setRoom("mix", v)} />
-            <Slider label="Drive" min={0} max={127} value={bank.drive} onChange={setDrive} />
-            <Slider label="Master" min={0} max={127} value={bank.master} onChange={setMaster} />
-          </div>
-        </div>
-      )}
-
-      {tab === "perform" && (
-        <div className="pane">
-          <div className="perform">
-            <section className="grid content-start gap-2">
-              <Banks scene={project.scene} />
-              <Slider
-                label={connected ? "Main knob" : "Morph A–B–C"}
-                min={0}
-                max={127}
-                value={project.morph}
-                disabled={connected}
-                onChange={setMorph}
-              />
-              <label className="slider">
-                Knob X
-                <select className="bg-surface text-fg" value={project.knobX} onChange={(e) => setKnob("knobX", Number(e.target.value))}>
-                  {KNOB_TARGETS.map((name, i) => (
-                    <option key={name} value={i}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="slider">
-                Knob Y
-                <select className="bg-surface text-fg" value={project.knobY} onChange={(e) => setKnob("knobY", Number(e.target.value))}>
-                  {KNOB_TARGETS.map((name, i) => (
-                    <option key={name} value={i}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="hint flex items-center gap-2">
-                <input type="checkbox" checked={ext} onChange={(e) => setExt(e.target.checked)} />
-                External clock. Pulse in 1 steps, pulse in 2 resets.
-              </label>
-            </section>
-            <section className="grid content-start gap-2">
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm text-accent">Song</h2>
+            <Knob label="Feedback" min={0} max={127} value={bank.delay.fb} onChange={(v) => setDelay("fb", v)} />
+            <Knob label="Drum delay" min={0} max={127} value={bank.delay.mix} onChange={(v) => setDelay("mix", v)} />
+            <Knob label="Room size" min={0} max={127} value={bank.room.size} onChange={(v) => setRoom("size", v)} />
+            <Knob label="Damp" min={0} max={127} value={bank.room.damp} onChange={(v) => setRoom("damp", v)} />
+            <Knob label="Drum room" min={0} max={127} value={bank.room.mix} onChange={(v) => setRoom("mix", v)} />
+            <Knob label="Drive" min={0} max={127} value={bank.drive} onChange={setDrive} />
+            <div className="voice-head">
+              <span className="text-sm text-accent">Panel</span>
+            </div>
+            <Slider label={connected ? "Main knob" : "Morph"} min={0} max={127} value={project.morph} disabled={connected} onChange={setMorph} />
+            <label className="slider">
+              Knob X
+              <select className="bg-surface text-fg" value={project.knobX} onChange={(e) => setKnob("knobX", Number(e.target.value))}>
+                {KNOB_TARGETS.map((name, i) => (
+                  <option key={name} value={i}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="slider">
+              Knob Y
+              <select className="bg-surface text-fg" value={project.knobY} onChange={(e) => setKnob("knobY", Number(e.target.value))}>
+                {KNOB_TARGETS.map((name, i) => (
+                  <option key={name} value={i}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="hint span2 flex items-center gap-2">
+              <input type="checkbox" checked={ext} onChange={(e) => setExt(e.target.checked)} />
+              External clock. Pulse in 1 steps, pulse in 2 resets.
+            </label>
+            <div className="voice-head">
+              <span className="text-sm text-accent">Song</span>
+              <span className="flex gap-1">
                 <button className="btn" disabled={project.song.length >= 16} onClick={addSongStep}>
                   Add
                 </button>
                 <button className="btn" onClick={() => queueNext()}>
                   Queue
                 </button>
-              </div>
-              <div className="song">
-                {project.song.map((stepPat, i) => (
-                  <div key={i} className={`song-step ${project.songAt === i ? "now" : ""}`}>
-                    <span className="hint">
-                      {i + 1}
-                      {project.pending === i ? " cue" : project.songAt === i ? " now" : ""}
-                    </span>
-                    <select className="bg-surface text-fg" value={stepPat} onChange={(e) => setSongStep(i, Number(e.target.value))}>
-                      {["A", "B", "C", "D", "E", "F", "G", "H"].map((name, n) => (
-                        <option key={name} value={n}>
-                          {name}
-                        </option>
-                      ))}
-                    </select>
-                    <button className="btn" disabled={project.song.length <= 1} onClick={() => removeSongStep(i)}>
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </section>
-          </div>
+              </span>
+            </div>
+            <div className="song span2">
+              {project.song.map((stepPat, i) => (
+                <div key={i} className={`song-step ${project.songAt === i ? "now" : ""}`}>
+                  <span className="hint">
+                    {i + 1}
+                    {project.pending === i ? " cue" : project.songAt === i ? " now" : ""}
+                  </span>
+                  <select className="bg-surface text-fg" value={stepPat} onChange={(e) => setSongStep(i, Number(e.target.value))}>
+                    {["A", "B", "C", "D", "E", "F", "G", "H"].map((name, n) => (
+                      <option key={name} value={n}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                  <button className="btn" disabled={project.song.length <= 1} onClick={() => removeSongStep(i)}>
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </aside>
         </div>
       )}
     </main>
@@ -468,13 +457,116 @@ export function LathTracker() {
 
 function Banks({ scene }: { scene: number }) {
   return (
-    <div className="flex gap-1">
+    <div className="flex items-center gap-1">
+      <span className="hint">Preset</span>
       {["A", "B", "C"].map((name, i) => (
         <button key={name} className={scene === i ? "btn btn-accent" : "btn"} onClick={() => setScene(i)}>
           {name}
         </button>
       ))}
     </div>
+  );
+}
+
+function Num({ label, value, min, max, onChange }: { label: string; value: number; min: number; max: number; onChange: (n: number) => void }) {
+  const [text, setText] = useState(String(value));
+  useEffect(() => setText(String(value)), [value]);
+  return (
+    <label className="num">
+      {label}
+      <input
+        inputMode="numeric"
+        aria-label={label}
+        value={text}
+        onChange={(e) => {
+          const next = e.target.value.replace(/[^\d]/g, "");
+          setText(next);
+          const n = Number(next);
+          if (next !== "" && n >= min && n <= max) onChange(n);
+        }}
+        onBlur={() => {
+          const n = Number(text);
+          const clamped = Number.isFinite(n) ? Math.max(min, Math.min(max, Math.round(n))) : value;
+          setText(String(clamped));
+          if (clamped !== value) onChange(clamped);
+        }}
+      />
+    </label>
+  );
+}
+
+function Fader({ label, value, min, max, onChange }: { label: string; value: number; min: number; max: number; onChange: (n: number) => void }) {
+  return (
+    <label className="fader">
+      <span>{value}</span>
+      <input className="fader-range" type="range" min={min} max={max} value={value} aria-label={label} onChange={(e) => onChange(Number(e.target.value))} />
+      <span>{label}</span>
+    </label>
+  );
+}
+
+function Knob({ label, value, min, max, onChange }: { label: string; value: number; min: number; max: number; onChange: (n: number) => void }) {
+  const t = max === min ? 0 : (value - min) / (max - min);
+  const angle = -140 + t * 280;
+  return (
+    <div className="knob">
+      <button
+        type="button"
+        className="knob-cap"
+        role="slider"
+        aria-label={label}
+        aria-valuemin={min}
+        aria-valuemax={max}
+        aria-valuenow={value}
+        onPointerDown={(e) => e.currentTarget.setPointerCapture(e.pointerId)}
+        onPointerMove={(e) => {
+          if (e.buttons !== 1) return;
+          onChange(Math.max(min, Math.min(max, Math.round(value - e.movementY * 0.7))));
+        }}
+        onWheel={(e) => {
+          e.preventDefault();
+          onChange(Math.max(min, Math.min(max, value + (e.deltaY < 0 ? 1 : -1))));
+        }}
+      >
+        <span className="knob-mark" style={{ transform: `rotate(${angle}deg)` }} />
+      </button>
+      <span>{label}</span>
+      <span className="text-fg">{value}</span>
+    </div>
+  );
+}
+
+function Strip({
+  name,
+  level,
+  pan,
+  onLevel,
+  onPan,
+  delay,
+  room,
+  onDelay,
+  onRoom,
+}: {
+  name: string;
+  level: number;
+  pan: number;
+  onLevel: (n: number) => void;
+  onPan: (n: number) => void;
+  delay?: number;
+  room?: number;
+  onDelay?: (n: number) => void;
+  onRoom?: (n: number) => void;
+}) {
+  return (
+    <section className="strip">
+      <h2>{name}</h2>
+      <Fader label="Level" min={0} max={127} value={level} onChange={onLevel} />
+      <div className="strip-knobs">
+        <Knob label="Pan" min={0} max={127} value={pan} onChange={onPan} />
+        {onDelay && delay != null ? <Knob label="Delay" min={0} max={127} value={delay} onChange={onDelay} /> : null}
+        {onRoom && room != null ? <Knob label="Room" min={0} max={127} value={room} onChange={onRoom} /> : null}
+      </div>
+    </section>
   );
 }
 

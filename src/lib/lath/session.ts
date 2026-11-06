@@ -248,12 +248,14 @@ export function setExt(ext: boolean) {
   }
 }
 
-export function clearTrack(tr: number) {
+export function clearPattern() {
   const pat = current().pattern;
   editProject((p) => {
-    for (let s = 0; s < 64; s++) p.steps[p.pattern][tr][s] = { n: 0, v: 0, l: 0, f: 0, a: 0 };
+    for (let t = 0; t < 6; t++) {
+      for (let s = 0; s < 64; s++) p.steps[p.pattern][t][s] = { n: 0, v: 0, l: 0, f: 0, a: 0 };
+    }
   });
-  sendClear(pat, tr);
+  for (let t = 0; t < 6; t++) sendClear(pat, t);
 }
 
 export function copyPattern(dst: number) {
