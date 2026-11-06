@@ -165,36 +165,37 @@ export function LathTracker() {
         </button>
       </header>
 
+      <div className="bar">
+        <span className="hint">Pattern</span>
+        {Array.from({ length: 8 }, (_, i) => (
+          <button key={i} className={i === pat ? "btn btn-accent" : "btn"} onClick={() => selectPattern(i)}>
+            {String.fromCharCode(65 + i)}
+          </button>
+        ))}
+        <button className="btn" onClick={() => clearPattern()} aria-label="Clear this pattern">
+          Clear
+        </button>
+        <Banks scene={project.scene} />
+        <select
+          aria-label="Copy to"
+          className="ml-auto"
+          style={{ width: "7rem" }}
+          value=""
+          onChange={(e) => {
+            if (e.target.value) copyPattern(Number(e.target.value));
+          }}
+        >
+          <option value="">Copy to…</option>
+          {Array.from({ length: 8 }, (_, i) => (
+            <option key={i} value={i}>
+              {String.fromCharCode(65 + i)}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div className="stage">
           <section className="seq">
-            <div className="bar">
-              <span className="hint">Pattern</span>
-              {Array.from({ length: 8 }, (_, i) => (
-                <button key={i} className={i === pat ? "btn btn-accent" : "btn"} onClick={() => selectPattern(i)}>
-                  {String.fromCharCode(65 + i)}
-                </button>
-              ))}
-              <button className="btn" onClick={() => clearPattern()} aria-label="Clear this pattern">
-                Clear
-              </button>
-              <Banks scene={project.scene} />
-              <select
-                aria-label="Copy to"
-                className="ml-auto"
-                style={{ width: "7rem" }}
-                value=""
-                onChange={(e) => {
-                  if (e.target.value) copyPattern(Number(e.target.value));
-                }}
-              >
-                <option value="">Copy to…</option>
-                {Array.from({ length: 8 }, (_, i) => (
-                  <option key={i} value={i}>
-                    {String.fromCharCode(65 + i)}
-                  </option>
-                ))}
-              </select>
-            </div>
             <div className="seq-body">
               <div className="seq-col" style={{ ["--rows" as string]: 32 }}>
                   <div className="row">
@@ -204,20 +205,22 @@ export function LathTracker() {
                         <button className="th-name" onClick={() => useLath.setState({ selT: i })}>
                           {tr.name}
                         </button>
-                        <button className="icon-btn" aria-label={`Shorter ${tr.name}`} onClick={() => setTrackLen(i, lengths[i] - 1)}>
-                          <Minus size={10} />
-                        </button>
-                        <span>{lengths[i]}</span>
-                        <button className="icon-btn" aria-label={`Longer ${tr.name}`} onClick={() => setTrackLen(i, lengths[i] + 1)}>
-                          <Plus size={10} />
-                        </button>
-                        <button
-                          className={`icon-btn ${project.mute[i] ? "text-led" : ""}`}
-                          aria-label={project.mute[i] ? `Unmute ${tr.name}` : `Mute ${tr.name}`}
-                          onClick={() => toggleMute(i)}
-                        >
-                          {project.mute[i] ? "M" : "·"}
-                        </button>
+                        <div className="th-tools">
+                          <button className="icon-btn" aria-label={`Shorter ${tr.name}`} onClick={() => setTrackLen(i, lengths[i] - 1)}>
+                            <Minus size={10} />
+                          </button>
+                          <span>{lengths[i]}</span>
+                          <button className="icon-btn" aria-label={`Longer ${tr.name}`} onClick={() => setTrackLen(i, lengths[i] + 1)}>
+                            <Plus size={10} />
+                          </button>
+                          <button
+                            className={`icon-btn ${project.mute[i] ? "text-led" : ""}`}
+                            aria-label={project.mute[i] ? `Unmute ${tr.name}` : `Mute ${tr.name}`}
+                            onClick={() => toggleMute(i)}
+                          >
+                            {project.mute[i] ? "M" : "·"}
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -256,6 +259,7 @@ export function LathTracker() {
             </div>
           </section>
 
+          <div className="side">
           <aside className="edit">
             <div className="step-edit">
               <h2 className="text-sm text-accent">
@@ -299,7 +303,7 @@ export function LathTracker() {
             </div>
           </aside>
 
-        <footer className="bottom">
+        <div className="desk-col">
           <div className="chans">
             {TRACKS.slice(0, 4).map((tr, i) => (
               <Instrument key={tr.id} name={tr.name} voice={bank.voice[i]} i={i} level={bank.mix[i].level} pan={bank.mix[i].pan} />
@@ -403,7 +407,8 @@ export function LathTracker() {
               </button>
             </div>
           </section>
-        </footer>
+        </div>
+          </div>
       </div>
     </main>
   );

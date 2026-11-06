@@ -18,19 +18,19 @@ The browser also plays a preview, so you can write patterns before the card is c
 
 On the module, the switch up stops, the middle plays, and a down click queues the next song step. The big knob morphs between presets A, B and C. The two small knobs do whatever you assign on the mixer.
 
-## Sequencer
+## The page
 
-![Sequencer. Patterns along the top, the grid on the left, the selected step and the four drum sounds on the right.](docs/sequencer.png)
+Everything is on one screen. The grid is a narrow column on the left. The step you are editing sits above the desk, and the instruments, the mixer and the effects fill the right side.
 
-**Pattern** A–H is the pattern you are editing. **Clear** erases that pattern. **Copy to** duplicates it onto another letter.
+![The tracker, the step editor, and the channel strips on one page.](docs/sequencer.png)
 
-The grid is six tracks, at most 32 steps. Each track has its own length, so they can loop against each other. Steps past that length are dim. The header of a track shortens it, lengthens it, or mutes it.
+**Pattern** A–H is the pattern you are editing. **Clear** erases it. **Preset** A, B and C are the three stored sounds. **Copy to** duplicates the pattern onto another letter.
 
-Click a step, then set it on the right:
+The grid is six tracks, at most 32 steps. Each track has its own length. Steps past that length are dim. The header of a track shortens it, lengthens it, or mutes it.
 
-- The note buttons, or the computer keyboard. Z is C, the Q row is the octave above. Comma and period move the octave. **Rest** clears the step.
-- **Velocity** and **Length**. On the CV tracks, length is the gate time.
-- **Command** and **Value**.
+Click a step, then set it on the right. The note buttons, or the computer keyboard: Z is C, the Q row is the octave above. Comma and period move the octave. **Rest** clears the step. **Velocity** and **Length** sit under the notes. On the CV tracks, length is the gate time.
+
+A command shows on the step as its letter and value, such as `R 3`.
 
 | Command | What the value does |
 | --- | --- |
@@ -43,30 +43,13 @@ Click a step, then set it on the right:
 | G | Tone for this drum hit, or glide time on a CV track. |
 | K | Choke. Silences the track for the next N steps. |
 
-**Preset** A, B and C are three stored sounds. The drums on the right edit the selected preset: decay, tone, pitch, and one extra control. **Wires** on the snare adds the rattle. Glass can be Glass, Wood, Zap or Tom.
+## The desk
 
-## Mixer
+Each drum is a strip on the right. **Vol** is the fader. **Pan** is centered at 12 o'clock. **Dly** and **Rm** are that instrument's sends. The other knobs are the sound: decay, tone, pitch, and click, noise, wires or bite. Glass has a model: Glass, Wood, Zap or Tom. Drag a knob upward to turn it up. Off is 7 o'clock, full is 5 o'clock.
 
-![Mixer. A fader and a pan knob per channel, effects and the panel on the right.](docs/mixer.png)
+**In 1** and **In 2** are the audio jacks. Patch the oscillators back in here. They have level, pan and the same two sends. **Master** is the last fader.
 
-Each drum is a channel strip: a vertical **Level** fader and a **Pan** knob. Drag a knob upward to turn it up.
+Delay, Room and Drive sit in their own boxes. Their Send knobs are the extra send for the whole drum bus, on top of the channel sends.
 
-**In 1** and **In 2** are the audio inputs on the Computer. Patch the oscillators back in here. They have the same level and pan, plus **Delay** and **Room** sends. **Master** is the last fader.
+**Panel** is the hardware. **Morph** is the big knob, blending preset A into B into C. While the card is connected, the knob on the module wins. **Knob X** and **Knob Y** choose what the two small knobs control. **Ext clock** uses pulse in 1 as a step clock and pulse in 2 as reset. The letters under that are the song. **Queue** lines up the next pattern. It starts when the longest track wraps. The down click on the module does the same thing.
 
-The right side is stored in the preset too:
-
-- Delay time, feedback and the drum delay send.
-- Room size, damp and the drum room send.
-- Drive.
-
-**Panel** is the hardware.
-
-- **Morph** is what the big knob does, blending preset A into B into C. It is only a preview while the card is connected. The knob on the module wins.
-- **Knob X** and **Knob Y** choose what the two small knobs control: swing, tempo, drive, effect levels, input levels and sends.
-- **External clock** uses pulse in 1 as a step clock and pulse in 2 as reset.
-
-**Song** is the order of patterns. **Add** grows the list, the letter picks the pattern, and **×** removes a step. **Queue** lines up the next one. It starts when the longest track of the current pattern wraps. The down click on the module does the same thing.
-
-## GitHub Pages
-
-Push this folder to `main` or `master`. The workflow is `.github/workflows/pages.yml`. In the repo, set Settings → Pages → Source to GitHub Actions.
