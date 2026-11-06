@@ -96,5 +96,21 @@ export function normalize(project: Project): Project {
       if (v.sendR == null) v.sendR = 0;
     }
   }
+  if (!project.returns) {
+    for (const scene of project.scenes) {
+      const empty = scene.voice.every((v) => !v.sendD && !v.sendR);
+      if (empty) {
+        const d = scene.delay.mix;
+        const r = scene.room.mix;
+        for (const v of scene.voice) {
+          v.sendD = d;
+          v.sendR = r;
+        }
+        scene.delay.mix = 100;
+        scene.room.mix = 100;
+      }
+    }
+    project.returns = 1;
+  }
   return project;
 }

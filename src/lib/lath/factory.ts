@@ -117,10 +117,10 @@ export function factoryProject(): Project {
     ],
     mute: [0,0,0,0,0,0],
     voice: [
-      { decay: 78, tone: 42, model: 0, pitch: 24, aux: 90, sendD: 0, sendR: 0 },
-      { decay: 26, tone: 100, model: 0, pitch: 24, aux: 48, sendD: 0, sendR: 0 },
-      { decay: 58, tone: 64, model: 0, pitch: 24, aux: 88, sendD: 0, sendR: 0 },
-      { decay: 48, tone: 72, model: 0, pitch: 24, aux: 80, sendD: 0, sendR: 0 },
+      { decay: 78, tone: 42, model: 0, pitch: 24, aux: 90, sendD: 40, sendR: 36 },
+      { decay: 26, tone: 100, model: 0, pitch: 24, aux: 48, sendD: 40, sendR: 36 },
+      { decay: 58, tone: 64, model: 0, pitch: 24, aux: 88, sendD: 40, sendR: 36 },
+      { decay: 48, tone: 72, model: 0, pitch: 24, aux: 80, sendD: 40, sendR: 36 },
     ],
     mix: [
       { level: 110, pan: 64 },
@@ -131,8 +131,8 @@ export function factoryProject(): Project {
       { level: 100, pan: 80 },
     ],
     master: 104,
-    delay: { time: 2, fb: 62, mix: 36 },
-    room: { size: 78, damp: 46, mix: 32 },
+    delay: { time: 2, fb: 62, mix: 100 },
+    room: { size: 78, damp: 46, mix: 100 },
     drive: 22,
     inputsToFx: 0,
     inSend: [
@@ -154,10 +154,10 @@ export function factoryProject(): Project {
 function threeScenes(): Scene[] {
   const a: Scene = {
     voice: [
-      { decay: 78, tone: 42, model: 0, pitch: 24, aux: 90, sendD: 0, sendR: 0 },
-      { decay: 26, tone: 100, model: 0, pitch: 24, aux: 48, sendD: 0, sendR: 0 },
-      { decay: 58, tone: 64, model: 0, pitch: 24, aux: 88, sendD: 0, sendR: 0 },
-      { decay: 48, tone: 72, model: 0, pitch: 24, aux: 80, sendD: 0, sendR: 0 },
+      { decay: 78, tone: 42, model: 0, pitch: 24, aux: 90, sendD: 40, sendR: 36 },
+      { decay: 26, tone: 100, model: 0, pitch: 24, aux: 48, sendD: 40, sendR: 36 },
+      { decay: 58, tone: 64, model: 0, pitch: 24, aux: 88, sendD: 40, sendR: 36 },
+      { decay: 48, tone: 72, model: 0, pitch: 24, aux: 80, sendD: 40, sendR: 36 },
     ],
     mix: [
       { level: 110, pan: 64 },
@@ -168,8 +168,8 @@ function threeScenes(): Scene[] {
       { level: 100, pan: 80 },
     ],
     master: 104,
-    delay: { time: 2, fb: 62, mix: 36 },
-    room: { size: 78, damp: 46, mix: 32 },
+    delay: { time: 2, fb: 62, mix: 100 },
+    room: { size: 78, damp: 46, mix: 100 },
     drive: 22,
     inSend: [
       { d: 0, r: 0 },
@@ -182,17 +182,18 @@ function threeScenes(): Scene[] {
     v.decay = Math.max(1, Math.round(v.decay * 0.55));
     v.tone = Math.min(127, v.tone + 28);
   }
-  b.delay.mix = 84;
+  b.delay.mix = 110;
   b.drive = 58;
-  b.room.mix = 18;
+  b.room.mix = 48;
   for (const v of c.voice) {
     v.decay = Math.min(127, v.decay + 36);
     v.tone = Math.max(0, v.tone - 18);
   }
   c.room.size = 112;
-  c.room.mix = 78;
+  c.room.mix = 115;
   c.drive = 6;
   c.delay.fb = 96;
+  c.delay.mix = 70;
   c.inSend = [
     { d: 70, r: 50 },
     { d: 40, r: 80 },

@@ -5,8 +5,9 @@ function createEngine(sr) {
   const delayLen = Math.floor(sr);
   const delay = new Float32Array(delayLen);
   let delayW = 0;
-  const combLen = [0.031, 0.037, 0.041, 0.047].map((t) => Math.floor(sr * t));
-  const comb = combLen.map((n) => new Float32Array(n));
+  const combBase = [2200, 2800, 3400, 4000].map((n) => Math.max(64, Math.floor((n * sr) / 48000)));
+  const combMax = combBase.map((n) => Math.floor((n * 163) / 128) + 1);
+  const comb = combMax.map((n) => new Float32Array(n));
   const combI = [0, 0, 0, 0];
   const combLp = [0, 0, 0, 0];
   const apLen = [Math.floor(sr * 0.005), Math.floor(sr * 0.0017)];
@@ -425,7 +426,7 @@ function createEngine(sr) {
     if (r < 0) r += delayLen;
     const wet = delay[r | 0];
     const fb = (project.delay.fb / 127) * 0.82;
-    const din = bus * (project.delay.mix / 127) + extraD;
+    const din = extraD;
     let rec = din + wet * fb;
     rec = Math.tanh(rec);
     delay[delayW] = rec;
@@ -435,20 +436,27 @@ function createEngine(sr) {
     if (r2 < 0) r2 += delayLen;
     const wetR = delay[r2 | 0];
 
-    const size = 0.45 + (project.room.size / 127) * 0.7;
-    const damp = 0.2 + (project.room.damp / 127) * 0.7;
-    const rin = (bus * (project.room.mix / 127) + extraB) * 0.4;
-    let tank = 0;
+    const sz = project.room.size | 0;
+    const freeze = sz >= 124;
+    const damp = (20 + ((project.room.damp | 0) >> 1)) / 256;
+    const roomFb = Math.min(246, 160 + ((sz * 90) >> 7)) / 256;
+    const rin = extraB * (freeze ? 0.08 : 0.55);
+    let tankL = 0;
+    let tankR = 0;
     for (let c = 0; c < 4; c++) {
-      const len = Math.max(32, Math.floor(combLen[c] * size));
+      const len = Math.max(32, Math.min(combMax[c] - 1, Math.floor((combBase[c] * (36 + sz)) / 128)));
       const idx = combI[c] % len;
       const y = comb[c][idx];
       combLp[c] += (y - combLp[c]) * damp;
-      const fbC = 0.55 + (project.room.size / 127) * 0.3;
-      comb[c][idx] = rin + combLp[c] * fbC;
+      const loop = freeze ? y : combLp[c] * roomFb;
+      let w = rin + loop;
+      w = Math.tanh(w);
+      comb[c][idx] = w;
       combI[c] = idx + 1;
-      tank += y;
+      if (c & 1) tankR += y;
+      else tankL += y;
     }
+    let tank = (tankL + tankR) * 0.5;
     for (let a = 0; a < 2; a++) {
       const y = ap[a][apI[a]];
       ap[a][apI[a]] = tank + y * 0.5;
@@ -456,9 +464,13 @@ function createEngine(sr) {
       apI[a]++;
       if (apI[a] >= apLen[a]) apI[a] = 0;
     }
+    tankL += tank * 0.5;
+    tankR += tank * 0.5;
     const master = (project.master / 127) * 0.85 * monitor;
-    let L = (dryL + wet * 0.55 + tank * 0.18) * master;
-    let R = (dryR + wetR * 0.55 + tank * 0.18) * master;
+    const dVol = (project.delay.mix || 0) / 127;
+    const rVol = (project.room.mix || 0) / 127;
+    let L = (dryL + wet * 0.55 * dVol + tankL * 0.28 * rVol) * master;
+    let R = (dryR + wetR * 0.55 * dVol + tankR * 0.28 * rVol) * master;
     if (L > 1) L = 1;
     if (L < -1) L = -1;
     if (R > 1) R = 1;

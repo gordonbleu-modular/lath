@@ -36,9 +36,9 @@ export const KNOB_TARGETS = [
   "Swing",
   "Tempo",
   "Drive",
-  "Delay send",
+  "Delay volume",
   "Delay feedback",
-  "Room send",
+  "Room volume",
   "Room size",
   "Master",
   "Audio in 1 level",
@@ -75,6 +75,8 @@ export type Project = {
   song: number[];
   songAt: number;
   pending: number;
+  /** 1 once the effect mix knobs have been turned into return volumes. */
+  returns?: number;
   steps: Step[][][];
 };
 

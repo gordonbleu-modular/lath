@@ -172,14 +172,9 @@ export function LathTracker() {
             {String.fromCharCode(65 + i)}
           </button>
         ))}
-        <button className="btn" onClick={() => clearPattern()} aria-label="Clear this pattern">
-          Clear
-        </button>
-        <Banks scene={project.scene} />
         <select
           aria-label="Copy to"
-          className="ml-auto"
-          style={{ width: "7rem" }}
+          className="copy"
           value=""
           onChange={(e) => {
             if (e.target.value) copyPattern(Number(e.target.value));
@@ -192,6 +187,10 @@ export function LathTracker() {
             </option>
           ))}
         </select>
+        <button className="btn" onClick={() => clearPattern()} aria-label="Clear this pattern">
+          Clear
+        </button>
+        <Banks scene={project.scene} />
       </div>
 
       <div className="stage">
@@ -311,11 +310,16 @@ export function LathTracker() {
             {["In 1", "In 2"].map((label, i) => (
               <section key={label} className="chan jack">
                 <h2>{label}</h2>
-                <div className="chan-grid jack-grid">
-                  <Fader label="Vol" min={0} max={127} value={bank.mix[4 + i].level} onChange={(v) => setMix(4 + i, "level", v)} />
-                  <Knob pan label="Pan" min={0} max={127} value={bank.mix[4 + i].pan} onChange={(v) => setMix(4 + i, "pan", v)} />
-                  <Knob label="Dly" min={0} max={127} value={bank.inSend[i].d} onChange={(v) => setInSend(i, "d", v)} />
-                  <Knob label="Rm" min={0} max={127} value={bank.inSend[i].r} onChange={(v) => setInSend(i, "r", v)} />
+                <div className="chan-body">
+                  <div className="mix-box">
+                    <span className="box-label">Mix</span>
+                    <div className="mix-controls">
+                      <Fader label="Vol" min={0} max={127} value={bank.mix[4 + i].level} onChange={(v) => setMix(4 + i, "level", v)} />
+                      <Knob pan label="Pan" min={0} max={127} value={bank.mix[4 + i].pan} onChange={(v) => setMix(4 + i, "pan", v)} />
+                      <Knob label="Dly" min={0} max={127} value={bank.inSend[i].d} onChange={(v) => setInSend(i, "d", v)} />
+                      <Knob label="Rm" min={0} max={127} value={bank.inSend[i].r} onChange={(v) => setInSend(i, "r", v)} />
+                    </div>
+                  </div>
                 </div>
               </section>
             ))}
@@ -339,15 +343,15 @@ export function LathTracker() {
               </label>
               <div className="fx-knobs">
                 <Knob label="Feedback" min={0} max={127} value={bank.delay.fb} onChange={(v) => setDelay("fb", v)} />
-                <Knob label="Send" min={0} max={127} value={bank.delay.mix} onChange={(v) => setDelay("mix", v)} />
+                <Knob label="Vol" min={0} max={127} value={bank.delay.mix} onChange={(v) => setDelay("mix", v)} />
               </div>
             </section>
             <section className="fx-group">
               <h3>Room</h3>
               <div className="fx-knobs">
-                <Knob label="Size" min={0} max={127} value={bank.room.size} onChange={(v) => setRoom("size", v)} />
+                <Knob label={bank.room.size >= 124 ? "Freeze" : bank.room.size >= 96 ? "Hall" : "Size"} min={0} max={127} value={bank.room.size} onChange={(v) => setRoom("size", v)} />
                 <Knob label="Damp" min={0} max={127} value={bank.room.damp} onChange={(v) => setRoom("damp", v)} />
-                <Knob label="Send" min={0} max={127} value={bank.room.mix} onChange={(v) => setRoom("mix", v)} />
+                <Knob label="Vol" min={0} max={127} value={bank.room.mix} onChange={(v) => setRoom("mix", v)} />
               </div>
             </section>
             <section className="fx-group">
@@ -443,15 +447,25 @@ function Instrument({
           </select>
         ) : null}
       </h2>
-      <div className="chan-grid">
-        <Fader label="Vol" min={0} max={127} value={level} onChange={(v) => setMix(i, "level", v)} />
-        <Knob pan label="Pan" min={0} max={127} value={pan} onChange={(v) => setMix(i, "pan", v)} />
-        <Knob label="Dly" min={0} max={127} value={voice.sendD || 0} onChange={(v) => setVoice(i, "sendD", v)} />
-        <Knob label="Rm" min={0} max={127} value={voice.sendR || 0} onChange={(v) => setVoice(i, "sendR", v)} />
-        <Knob label="Decay" min={1} max={127} value={voice.decay} onChange={(v) => setVoice(i, "decay", v)} />
-        <Knob label="Tone" min={0} max={127} value={voice.tone} onChange={(v) => setVoice(i, "tone", v)} />
-        <Knob label="Pitch" min={0} max={48} value={voice.pitch} onChange={(v) => setVoice(i, "pitch", v)} />
-        <Knob label={aux} min={0} max={127} value={voice.aux} onChange={(v) => setVoice(i, "aux", v)} />
+      <div className="chan-body">
+        <div className="mix-box">
+          <span className="box-label">Mix</span>
+          <div className="mix-controls">
+            <Fader label="Vol" min={0} max={127} value={level} onChange={(v) => setMix(i, "level", v)} />
+            <Knob pan label="Pan" min={0} max={127} value={pan} onChange={(v) => setMix(i, "pan", v)} />
+            <Knob label="Dly" min={0} max={127} value={voice.sendD || 0} onChange={(v) => setVoice(i, "sendD", v)} />
+            <Knob label="Rm" min={0} max={127} value={voice.sendR || 0} onChange={(v) => setVoice(i, "sendR", v)} />
+          </div>
+        </div>
+        <div className="sound-box">
+          <span className="box-label">Sound</span>
+          <div className="sound-knobs">
+            <Knob label="Decay" min={1} max={127} value={voice.decay} onChange={(v) => setVoice(i, "decay", v)} />
+            <Knob label="Tone" min={0} max={127} value={voice.tone} onChange={(v) => setVoice(i, "tone", v)} />
+            <Knob label="Pitch" min={0} max={48} value={voice.pitch} onChange={(v) => setVoice(i, "pitch", v)} />
+            <Knob label={aux} min={0} max={127} value={voice.aux} onChange={(v) => setVoice(i, "aux", v)} />
+          </div>
+        </div>
       </div>
     </section>
   );
