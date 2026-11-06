@@ -15,10 +15,12 @@ import {
   sendSwing,
   sendTempo,
   sendTransport,
+  sendDrumLock,
+  sendFxLock,
 } from "./midi";
 import { persist, useLath } from "./store";
 import type { Project, Scene, Step } from "./types";
-import { clamp } from "./types";
+import { clamp, drumToNib, fxToNib } from "./types";
 
 function commit(project: Project) {
   useLath.setState({ project, hold: Date.now() + 900 });
@@ -61,7 +63,7 @@ export async function togglePlay() {
   primeAudio();
   const s = useLath.getState();
   const running = !s.running;
-  useLath.setState({ running });
+  useLath.setState(running ? { running } : { running, pos: [0, 0, 0, 0, 0, 0] });
   await resumeAudio();
   const now = useLath.getState();
   if (now.connected) {
@@ -136,10 +138,28 @@ export function writeStep(tr: number, st: number, cell: Step, audition = false) 
   }
 }
 
-export function setVoice(i: number, key: "decay" | "tone" | "model" | "pitch" | "aux" | "sendD" | "sendR", value: number) {
+export function setVoice(i: number, key: "decay" | "tone" | "model" | "pitch" | "aux" | "sendD" | "sendR" | "pa" | "pb", value: number) {
   editScene((scene) => {
     scene.voice[i][key] = value;
   });
+}
+
+export function setDrumLock(track: number, step: number, index: number, value: number | null) {
+  const pat = current().pattern;
+  const project = editProject((p) => {
+    const row = p.stepPar[pat][track][step];
+    row[index] = value == null ? null : drumToNib(index, value);
+  });
+  sendDrumLock(pat, track, step, project.stepPar[pat][track][step]);
+}
+
+export function setFxLock(step: number, index: number, value: number | null) {
+  const pat = current().pattern;
+  const project = editProject((p) => {
+    const row = p.fxPar[pat][step];
+    row[index] = value == null ? null : fxToNib(index, value);
+  });
+  sendFxLock(pat, step, project.fxPar[pat][step]);
 }
 
 export function setMix(i: number, key: "level" | "pan", value: number) {
@@ -254,6 +274,10 @@ export function clearPattern() {
     for (let t = 0; t < 6; t++) {
       for (let s = 0; s < 64; s++) p.steps[p.pattern][t][s] = { n: 0, v: 0, l: 0, f: 0, a: 0 };
     }
+    for (let t = 0; t < 4; t++) {
+      for (let s = 0; s < 32; s++) p.stepPar[p.pattern][t][s] = Array.from({ length: 10 }, () => null);
+    }
+    for (let s = 0; s < 32; s++) p.fxPar[p.pattern][s] = Array.from({ length: 7 }, () => null);
   });
   for (let t = 0; t < 6; t++) sendClear(pat, t);
 }
@@ -264,6 +288,8 @@ export function copyPattern(dst: number) {
   editProject((p) => {
     p.steps[dst] = structuredClone(p.steps[src]);
     p.trackLen[dst] = structuredClone(p.trackLen[src]);
+    p.stepPar[dst] = structuredClone(p.stepPar[src]);
+    p.fxPar[dst] = structuredClone(p.fxPar[src]);
   });
   sendCopy(dst, src);
 }

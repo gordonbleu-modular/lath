@@ -15,6 +15,10 @@ export type Voice = {
   aux: number;
   sendD: number;
   sendR: number;
+  /** Pipe fold, Shard metal pitch, Wire drive, Glass strike. */
+  pa: number;
+  /** Pipe drive, Shard air, Wire snap, Glass spread. */
+  pb: number;
 };
 
 export type MixCh = { level: number; pan: number };
@@ -77,6 +81,13 @@ export type Project = {
   pending: number;
   /** 1 once the effect mix knobs have been turned into return volumes. */
   returns?: number;
+  /**
+   * Per-step locks. null follows the preset.
+   * Drum: [pattern][track 0-3][step 0-31][10 nibbles].
+   * Effects: [pattern][step 0-31][7 nibbles], played from Pipe's step.
+   */
+  stepPar: (number | null)[][][][];
+  fxPar: (number | null)[][][];
   steps: Step[][][];
 };
 
@@ -115,6 +126,63 @@ export function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n | 0));
 }
 
+/** 0–15 packed into 0–span. 15 lands on span. */
+export function toNib(v: number, span = 127): number {
+  return clamp(Math.round((clamp(v, 0, span) * 15) / Math.max(1, span)), 0, 15);
+}
+
+export function fromNib(n: number, span = 127): number {
+  return clamp(Math.round((clamp(n | 0, 0, 15) * span) / 15), 0, span);
+}
+
+/** Pan nibble 8 is exact center. */
+export function panToNib(v: number): number {
+  const x = clamp(v, 0, 127);
+  if (x <= 64) return clamp(Math.round(x / 8), 0, 8);
+  return clamp(8 + Math.round(((x - 64) * 7) / 63), 8, 15);
+}
+
+export function panFromNib(n: number): number {
+  const x = clamp(n | 0, 0, 15);
+  if (x <= 8) return x * 8;
+  return clamp(64 + Math.round(((x - 8) * 63) / 7), 0, 127);
+}
+
+/** Drum lock order: decay, tone, pitch, aux, pa, pb, level, pan, delay send, room send. */
+export function drumToNib(index: number, value: number): number {
+  if (index === 2) return toNib(value, 48);
+  if (index === 7) return panToNib(value);
+  return toNib(value, 127);
+}
+
+export function drumFromNib(index: number, nib: number): number {
+  if (index === 2) return clamp((nib | 0) * 3, 0, 48);
+  if (index === 7) return panFromNib(nib);
+  const v = fromNib(nib, 127);
+  return index === 0 ? Math.max(1, v) : v;
+}
+
+/** Effect lock order: time, feedback, delay vol, size, damp, room vol, drive. */
+export function fxToNib(index: number, value: number): number {
+  if (index === 0) return clamp(value, 0, 7);
+  return toNib(value, 127);
+}
+
+export function fxFromNib(index: number, nib: number): number {
+  if (index === 0) return clamp(nib | 0, 0, 7);
+  return fromNib(nib, 127);
+}
+
+export function emptyDrumLocks(): (number | null)[][][][] {
+  return Array.from({ length: 8 }, () =>
+    Array.from({ length: 4 }, () => Array.from({ length: 32 }, () => Array.from({ length: 10 }, () => null))),
+  );
+}
+
+export function emptyFxLocks(): (number | null)[][][] {
+  return Array.from({ length: 8 }, () => Array.from({ length: 32 }, () => Array.from({ length: 7 }, () => null)));
+}
+
 export const PROTO = 1;
 export const CMD = {
   hello: 0x01,
@@ -136,6 +204,7 @@ export const CMD = {
   scene: 0x38,
   perform: 0x39,
   queue: 0x3b,
+  lock: 0x3c,
   playhead: 0x40,
   panel: 0x41,
   save: 0x50,

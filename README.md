@@ -1,10 +1,8 @@
 # LATH
 
-Tracker for the Music Thing Workshop Computer. Four drum voices, two CV and gate tracks, a mixer for the audio inputs, and delay, room and drive. The page talks to the card over USB MIDI. Patterns also preview in the browser.
+A tracker for the Music Thing Workshop Computer. Four drum voices, two pitch-and-gate tracks for the analog oscillators, and a mixer that can bring those oscillators back in with the drums.
 
-Web editor and control panel: [https://gordonbleu-modular.github.io/lath/](https://gordonbleu-modular.github.io/lath/)
-
-Chrome or Edge on a computer. Web MIDI does not work on iOS.
+Use Chrome or Edge on a computer. Web MIDI does not work on phones.
 
 ## Start
 
@@ -24,11 +22,13 @@ Everything is on one screen. The grid is a narrow column on the left. The step y
 
 ![The tracker, the step editor, and the channel strips on one page.](docs/sequencer.png)
 
-**Pattern** A–H is the pattern you are editing. **Clear** erases it. **Preset** A, B and C are the three stored sounds. **Copy to** duplicates the pattern onto another letter.
+**Pattern** A–H is the pattern you are editing. **Clear** erases the notes and the per-step locks. **Copy to** duplicates the pattern onto another letter. **Preset** A, B and C sit with the strips, because they are the sounds.
 
-The grid is six tracks, at most 32 steps. Each track has its own length. Steps past that length are dim. The header of a track shortens it, lengthens it, or mutes it.
+The grid is six tracks, at most 32 steps. Each track has its own length. Steps past that length are dim. The header of a track shortens it, lengthens it, or mutes it. **Stop** puts every playhead back on step 1.
 
-Click a step, then set it on the right. The note buttons, or the computer keyboard: Z is C, the Q row is the octave above. Comma and period move the octave. **Rest** clears the step. **Velocity** and **Length** sit under the notes. On the CV tracks, length is the gate time.
+Click a step. That instrument's strip lights up, and the knobs show that step. Dragging a knob writes the step only, and the knob gets a gold ring. Double-click it to follow the preset again. **Kit** edits the preset itself, which is what unlocked steps and the big knob use. **Step** goes back to editing the selected step. Effects follow the selected step while you edit, and Pipe's playhead while the pattern plays.
+
+The note buttons, or the computer keyboard: Z is C, the Q row is the octave above. Comma and period move the octave. **Rest** clears the step. **Velocity** and **Length** sit under the notes. On the CV tracks, length is the gate time.
 
 A command shows on the step as its letter and value, such as `R 3`.
 
@@ -45,11 +45,14 @@ A command shows on the step as its letter and value, such as `R 3`.
 
 ## The desk
 
-Each drum is a strip on the right. **Vol** is the fader. **Pan** is centered at 12 o'clock. **Dly** and **Rm** are that instrument's sends. The other knobs are the sound: decay, tone, pitch, and click, noise, wires or bite. Glass has a model: Glass, Wood, Zap or Tom. Drag a knob upward to turn it up. Off is 7 o'clock, full is 5 o'clock.
+Each drum is a strip on the right. The **Mix** box is the fader, the pan, and the delay and room sends. The sound box is labeled with the instrument. Pipe has fold and drive, Shard has a high metal source and its level (Metal, Air), Wire has drive and a noise snap, Glass has a strike and a partial spread. Decay, tone, pitch, and click, noise, wires or bite are still there. Glass also has a model, and that model stays with the preset: Glass, Wood, Zap or Tom. Drag a knob upward to turn it up. Off is 7 o'clock, full is 5 o'clock. A gold ring means this step is not using the preset.
 
 **In 1** and **In 2** are the audio jacks. Patch the oscillators back in here. They have level, pan and the same two sends. **Master** is the last fader.
 
-Delay, Room and Drive sit in their own boxes. Their Send knobs are the extra send for the whole drum bus, on top of the channel sends.
+Delay, Room and Drive sit in their own boxes. **Vol** on a delay or a room is the return level. The channel **Dly** and **Rm** knobs decide how much of that channel goes into the effect. **Size** opens the room into a hall. From about 96 the label says **Hall**, and the last few values say **Freeze**: the tank holds and the reverb does not die. **Damp** darkens the tail.
 
 **Panel** is the hardware. **Morph** is the big knob, blending preset A into B into C. While the card is connected, the knob on the module wins. **Knob X** and **Knob Y** choose what the two small knobs control. **Ext clock** uses pulse in 1 as a step clock and pulse in 2 as reset. The letters under that are the song. **Queue** lines up the next pattern. It starts when the longest track wraps. The down click on the module does the same thing.
 
+## GitHub Pages
+
+Push this folder to `main` or `master`. The workflow is `.github/workflows/pages.yml`. In the repo, set Settings → Pages → Source to GitHub Actions.

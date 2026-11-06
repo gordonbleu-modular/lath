@@ -1,4 +1,5 @@
 import type { Project, Scene, Step } from "./types";
+import { emptyDrumLocks, emptyFxLocks } from "./types";
 
 const Z: Step = { n: 0, v: 0, l: 0, f: 0, a: 0 };
 
@@ -117,10 +118,10 @@ export function factoryProject(): Project {
     ],
     mute: [0,0,0,0,0,0],
     voice: [
-      { decay: 78, tone: 42, model: 0, pitch: 24, aux: 90, sendD: 40, sendR: 36 },
-      { decay: 26, tone: 100, model: 0, pitch: 24, aux: 48, sendD: 40, sendR: 36 },
-      { decay: 58, tone: 64, model: 0, pitch: 24, aux: 88, sendD: 40, sendR: 36 },
-      { decay: 48, tone: 72, model: 0, pitch: 24, aux: 80, sendD: 40, sendR: 36 },
+      { decay: 78, tone: 42, model: 0, pitch: 24, aux: 90, sendD: 40, sendR: 36, pa: 0, pb: 0 },
+      { decay: 26, tone: 100, model: 0, pitch: 24, aux: 48, sendD: 40, sendR: 36, pa: 0, pb: 0 },
+      { decay: 58, tone: 64, model: 0, pitch: 24, aux: 88, sendD: 40, sendR: 36, pa: 0, pb: 0 },
+      { decay: 48, tone: 72, model: 0, pitch: 24, aux: 80, sendD: 40, sendR: 36, pa: 0, pb: 0 },
     ],
     mix: [
       { level: 110, pan: 64 },
@@ -147,6 +148,8 @@ export function factoryProject(): Project {
     song: [0, 1, 2],
     songAt: 0,
     pending: -1,
+    stepPar: emptyDrumLocks(),
+    fxPar: emptyFxLocks(),
     steps,
   };
 }
@@ -154,10 +157,10 @@ export function factoryProject(): Project {
 function threeScenes(): Scene[] {
   const a: Scene = {
     voice: [
-      { decay: 78, tone: 42, model: 0, pitch: 24, aux: 90, sendD: 40, sendR: 36 },
-      { decay: 26, tone: 100, model: 0, pitch: 24, aux: 48, sendD: 40, sendR: 36 },
-      { decay: 58, tone: 64, model: 0, pitch: 24, aux: 88, sendD: 40, sendR: 36 },
-      { decay: 48, tone: 72, model: 0, pitch: 24, aux: 80, sendD: 40, sendR: 36 },
+      { decay: 78, tone: 42, model: 0, pitch: 24, aux: 90, sendD: 40, sendR: 36, pa: 0, pb: 0 },
+      { decay: 26, tone: 100, model: 0, pitch: 24, aux: 48, sendD: 40, sendR: 36, pa: 0, pb: 0 },
+      { decay: 58, tone: 64, model: 0, pitch: 24, aux: 88, sendD: 40, sendR: 36, pa: 0, pb: 0 },
+      { decay: 48, tone: 72, model: 0, pitch: 24, aux: 80, sendD: 40, sendR: 36, pa: 0, pb: 0 },
     ],
     mix: [
       { level: 110, pan: 64 },

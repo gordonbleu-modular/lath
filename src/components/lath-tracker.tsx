@@ -24,13 +24,15 @@ import {
   setSwing,
   setTrackLen,
   setVoice,
+  setDrumLock,
+  setFxLock,
   toggleMute,
   togglePlay,
   writeStep,
 } from "../lib/lath/session";
 import { loadStored, persist, useLath } from "../lib/lath/store";
 import { pushProject, resumeAudio } from "../lib/lath/audio";
-import { DELAY_TIMES, FX, KNOB_TARGETS, MODELS, TRACKS, noteName } from "../lib/lath/types";
+import { DELAY_TIMES, FX, KNOB_TARGETS, MODELS, TRACKS, drumFromNib, fxFromNib, noteName } from "../lib/lath/types";
 import type { Step } from "../lib/lath/types";
 
 const EMPTY: Step = { n: 0, v: 0, l: 0, f: 0, a: 0 };
@@ -72,6 +74,7 @@ export function LathTracker() {
   const selS = useLath((s) => s.selS);
   const octave = useLath((s) => s.octave);
   const ext = useLath((s) => s.ext);
+  const kitEdit = useLath((s) => s.kitEdit);
   const pat = project.pattern;
   const cell = project.steps[pat][selT][selS];
   const lengths = project.trackLen[pat];
@@ -190,7 +193,6 @@ export function LathTracker() {
         <button className="btn" onClick={() => clearPattern()} aria-label="Clear this pattern">
           Clear
         </button>
-        <Banks scene={project.scene} />
       </div>
 
       <div className="stage">
@@ -303,9 +305,24 @@ export function LathTracker() {
           </aside>
 
         <div className="desk-col">
-          <div className="chans">
+          <div className="chans-wrap">
+            <div className="kit-bar">
+              <Banks scene={project.scene} />
+              <button className={!kitEdit ? "btn btn-accent" : "btn"} onClick={() => useLath.setState({ kitEdit: false })}>
+                Step
+              </button>
+              <button className={kitEdit ? "btn btn-accent" : "btn"} onClick={() => useLath.setState({ kitEdit: true })}>
+                Kit
+              </button>
+              <span className="hint">
+                {kitEdit
+                  ? "Editing the preset. Steps with no gold ring follow it."
+                  : `${TRACKS[selT].name} ${String(selS + 1).padStart(2, "0")} · double-click a knob to unlock`}
+              </span>
+            </div>
+            <div className="chans">
             {TRACKS.slice(0, 4).map((tr, i) => (
-              <Instrument key={tr.id} name={tr.name} voice={bank.voice[i]} i={i} level={bank.mix[i].level} pan={bank.mix[i].pan} />
+              <Instrument key={tr.id} name={tr.name} i={i} hot={selT === i} />
             ))}
             {["In 1", "In 2"].map((label, i) => (
               <section key={label} className="chan jack">
@@ -328,36 +345,28 @@ export function LathTracker() {
               <Fader label="Vol" min={0} max={127} value={bank.master} onChange={setMaster} />
             </section>
           </div>
-          <div className="fx-groups">
+          </div>
+          <div className={`fx-groups ${kitEdit ? "" : "hot"}`}>
             <section className="fx-group">
-              <h3>Delay</h3>
-              <label className="slider">
-                Time
-                <select className="bg-surface text-fg" value={bank.delay.time} onChange={(e) => setDelay("time", Number(e.target.value))}>
-                  {DELAY_TIMES.map((name, i) => (
-                    <option key={name} value={i}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <h3>Delay {kitEdit ? "" : String(selS + 1).padStart(2, "0")}</h3>
+              <FxTime />
               <div className="fx-knobs">
-                <Knob label="Feedback" min={0} max={127} value={bank.delay.fb} onChange={(v) => setDelay("fb", v)} />
-                <Knob label="Vol" min={0} max={127} value={bank.delay.mix} onChange={(v) => setDelay("mix", v)} />
+                <FxKnob index={1} label="Feedback" preset={bank.delay.fb} />
+                <FxKnob index={2} label="Vol" preset={bank.delay.mix} />
               </div>
             </section>
             <section className="fx-group">
               <h3>Room</h3>
               <div className="fx-knobs">
-                <Knob label={bank.room.size >= 124 ? "Freeze" : bank.room.size >= 96 ? "Hall" : "Size"} min={0} max={127} value={bank.room.size} onChange={(v) => setRoom("size", v)} />
-                <Knob label="Damp" min={0} max={127} value={bank.room.damp} onChange={(v) => setRoom("damp", v)} />
-                <Knob label="Vol" min={0} max={127} value={bank.room.mix} onChange={(v) => setRoom("mix", v)} />
+                <FxKnob index={3} label={bank.room.size >= 124 ? "Freeze" : bank.room.size >= 96 ? "Hall" : "Size"} preset={bank.room.size} room />
+                <FxKnob index={4} label="Damp" preset={bank.room.damp} />
+                <FxKnob index={5} label="Vol" preset={bank.room.mix} />
               </div>
             </section>
             <section className="fx-group">
               <h3>Drive</h3>
               <div className="fx-knobs">
-                <Knob label="Amount" min={0} max={127} value={bank.drive} onChange={setDrive} />
+                <FxKnob index={6} label="Amount" preset={bank.drive} />
               </div>
             </section>
           </div>
@@ -419,22 +428,56 @@ export function LathTracker() {
 }
 
 
-function Instrument({
-  name,
-  i,
-  voice,
-  level,
-  pan,
-}: {
-  name: string;
-  i: number;
-  voice: { decay: number; tone: number; pitch: number; aux: number; model: number; sendD: number; sendR: number };
-  level: number;
-  pan: number;
-}) {
+const EXTRAS = [
+  ["Fold", "Drive"],
+  ["Metal", "Air"],
+  ["Drive", "Snap"],
+  ["Strike", "Spread"],
+] as const;
+
+function Instrument({ name, i, hot }: { name: string; i: number; hot: boolean }) {
+  const project = useLath((s) => s.project);
+  const selS = useLath((s) => s.selS);
+  const kitEdit = useLath((s) => s.kitEdit);
+  const bank = project.scenes[project.scene] ?? project.scenes[0];
+  const voice = bank.voice[i];
   const aux = i === 0 ? "Click" : i === 1 ? "Noise" : i === 2 ? "Wires" : "Bite";
+  const step = Math.min(31, selS);
+  const row = project.stepPar?.[project.pattern]?.[i]?.[step];
+  const shown = (index: number, preset: number) => {
+    const nib = !kitEdit ? row?.[index] : null;
+    if (nib == null) return { value: preset, locked: false };
+    return { value: drumFromNib(index, nib), locked: true };
+  };
+  const edit = (index: number, v: number) => {
+    if (kitEdit) {
+      if (index === 0) setVoice(i, "decay", v);
+      else if (index === 1) setVoice(i, "tone", v);
+      else if (index === 2) setVoice(i, "pitch", v);
+      else if (index === 3) setVoice(i, "aux", v);
+      else if (index === 4) setVoice(i, "pa", v);
+      else if (index === 5) setVoice(i, "pb", v);
+      else if (index === 6) setMix(i, "level", v);
+      else if (index === 7) setMix(i, "pan", v);
+      else if (index === 8) setVoice(i, "sendD", v);
+      else setVoice(i, "sendR", v);
+      return;
+    }
+    setDrumLock(i, step, index, v);
+  };
+  const reset = (index: number) => setDrumLock(i, step, index, null);
+  const decay = shown(0, voice.decay);
+  const tone = shown(1, voice.tone);
+  const pitch = shown(2, voice.pitch);
+  const auxV = shown(3, voice.aux);
+  const pa = shown(4, voice.pa || 0);
+  const pb = shown(5, voice.pb || 0);
+  const level = shown(6, bank.mix[i].level);
+  const pan = shown(7, bank.mix[i].pan);
+  const dly = shown(8, voice.sendD || 0);
+  const room = shown(9, voice.sendR || 0);
   return (
-    <section className="chan">
+    <section className={hot ? "chan hot" : "chan"}>
       <h2>
         {name}
         {i === 3 ? (
@@ -451,24 +494,81 @@ function Instrument({
         <div className="mix-box">
           <span className="box-label">Mix</span>
           <div className="mix-controls">
-            <Fader label="Vol" min={0} max={127} value={level} onChange={(v) => setMix(i, "level", v)} />
-            <Knob pan label="Pan" min={0} max={127} value={pan} onChange={(v) => setMix(i, "pan", v)} />
-            <Knob label="Dly" min={0} max={127} value={voice.sendD || 0} onChange={(v) => setVoice(i, "sendD", v)} />
-            <Knob label="Rm" min={0} max={127} value={voice.sendR || 0} onChange={(v) => setVoice(i, "sendR", v)} />
+            <Fader label="Vol" min={0} max={127} value={level.value} locked={level.locked} onChange={(v) => edit(6, v)} onReset={() => reset(6)} />
+            <Knob pan label="Pan" min={0} max={127} value={pan.value} locked={pan.locked} onChange={(v) => edit(7, v)} onReset={() => reset(7)} />
+            <Knob label="Dly" min={0} max={127} value={dly.value} locked={dly.locked} onChange={(v) => edit(8, v)} onReset={() => reset(8)} />
+            <Knob label="Rm" min={0} max={127} value={room.value} locked={room.locked} onChange={(v) => edit(9, v)} onReset={() => reset(9)} />
           </div>
         </div>
         <div className="sound-box">
-          <span className="box-label">Sound</span>
+          <span className="box-label">{name}</span>
           <div className="sound-knobs">
-            <Knob label="Decay" min={1} max={127} value={voice.decay} onChange={(v) => setVoice(i, "decay", v)} />
-            <Knob label="Tone" min={0} max={127} value={voice.tone} onChange={(v) => setVoice(i, "tone", v)} />
-            <Knob label="Pitch" min={0} max={48} value={voice.pitch} onChange={(v) => setVoice(i, "pitch", v)} />
-            <Knob label={aux} min={0} max={127} value={voice.aux} onChange={(v) => setVoice(i, "aux", v)} />
+            <Knob label="Decay" min={1} max={127} value={decay.value} locked={decay.locked} onChange={(v) => edit(0, v)} onReset={() => reset(0)} />
+            <Knob label="Tone" min={0} max={127} value={tone.value} locked={tone.locked} onChange={(v) => edit(1, v)} onReset={() => reset(1)} />
+            <Knob label="Pitch" min={0} max={48} value={pitch.value} locked={pitch.locked} onChange={(v) => edit(2, v)} onReset={() => reset(2)} />
+            <Knob label={aux} min={0} max={127} value={auxV.value} locked={auxV.locked} onChange={(v) => edit(3, v)} onReset={() => reset(3)} />
+            <Knob label={EXTRAS[i][0]} min={0} max={127} value={pa.value} locked={pa.locked} onChange={(v) => edit(4, v)} onReset={() => reset(4)} />
+            <Knob label={EXTRAS[i][1]} min={0} max={127} value={pb.value} locked={pb.locked} onChange={(v) => edit(5, v)} onReset={() => reset(5)} />
           </div>
         </div>
       </div>
     </section>
   );
+}
+
+function FxTime() {
+  const project = useLath((s) => s.project);
+  const selS = useLath((s) => s.selS);
+  const kitEdit = useLath((s) => s.kitEdit);
+  const bank = project.scenes[project.scene] ?? project.scenes[0];
+  const step = Math.min(31, selS);
+  const nib = !kitEdit ? project.fxPar?.[project.pattern]?.[step]?.[0] : null;
+  const locked = nib != null;
+  const value = locked ? fxFromNib(0, nib) : bank.delay.time;
+  return (
+    <label className={locked ? "slider locked" : "slider"} onDoubleClick={() => setFxLock(step, 0, null)}>
+      Time
+      <select
+        className="bg-surface text-fg"
+        value={value}
+        onChange={(e) => {
+          const v = Number(e.target.value);
+          if (kitEdit) setDelay("time", v);
+          else setFxLock(step, 0, v);
+        }}
+      >
+        {DELAY_TIMES.map((name, i) => (
+          <option key={name} value={i}>
+            {name}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function FxKnob({ index, label, preset, room }: { index: number; label: string; preset: number; room?: boolean }) {
+  const project = useLath((s) => s.project);
+  const selS = useLath((s) => s.selS);
+  const kitEdit = useLath((s) => s.kitEdit);
+  const step = Math.min(31, selS);
+  const nib = !kitEdit ? project.fxPar?.[project.pattern]?.[step]?.[index] : null;
+  const locked = nib != null;
+  const value = locked ? fxFromNib(index, nib) : preset;
+  const text = room ? (value >= 124 ? "Freeze" : value >= 96 ? "Hall" : "Size") : label;
+  const change = (v: number) => {
+    if (!kitEdit) {
+      setFxLock(step, index, v);
+      return;
+    }
+    if (index === 1) setDelay("fb", v);
+    else if (index === 2) setDelay("mix", v);
+    else if (index === 3) setRoom("size", v);
+    else if (index === 4) setRoom("damp", v);
+    else if (index === 5) setRoom("mix", v);
+    else setDrive(v);
+  };
+  return <Knob label={text} min={0} max={127} value={value} locked={locked} onChange={change} onReset={() => setFxLock(step, index, null)} />;
 }
 
 function Banks({ scene }: { scene: number }) {
@@ -511,9 +611,25 @@ function Num({ label, value, min, max, onChange }: { label: string; value: numbe
   );
 }
 
-function Fader({ label, value, min, max, onChange }: { label: string; value: number; min: number; max: number; onChange: (n: number) => void }) {
+function Fader({
+  label,
+  value,
+  min,
+  max,
+  onChange,
+  locked = false,
+  onReset,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  onChange: (n: number) => void;
+  locked?: boolean;
+  onReset?: () => void;
+}) {
   return (
-    <label className="fader">
+    <label className={locked ? "fader locked" : "fader"} onDoubleClick={onReset}>
       <span>{value}</span>
       <input className="fader-range" type="range" min={min} max={max} value={value} aria-label={label} onChange={(e) => onChange(Number(e.target.value))} />
       <span>{label}</span>
@@ -541,14 +657,18 @@ function Knob({
   min,
   max,
   pan,
+  locked = false,
   onChange,
+  onReset,
 }: {
   label: string;
   value: number;
   min: number;
   max: number;
   pan?: boolean;
+  locked?: boolean;
   onChange: (n: number) => void;
+  onReset?: () => void;
 }) {
   const angle = knobAngle(value, min, max, !!pan);
   const readout = pan ? (value === 64 ? "C" : value < 64 ? `L${64 - value}` : `R${value - 64}`) : String(value);
@@ -556,12 +676,16 @@ function Knob({
     <div className="knob">
       <button
         type="button"
-        className={pan ? "knob-cap pan" : "knob-cap"}
+        className={`${pan ? "knob-cap pan" : "knob-cap"}${locked ? " locked" : ""}`}
         role="slider"
         aria-label={label}
         aria-valuemin={min}
         aria-valuemax={max}
         aria-valuenow={value}
+        onDoubleClick={(e) => {
+          e.preventDefault();
+          onReset?.();
+        }}
         onPointerDown={(e) => e.currentTarget.setPointerCapture(e.pointerId)}
         onPointerMove={(e) => {
           if (e.buttons !== 1) return;

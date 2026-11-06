@@ -81,6 +81,7 @@ function sceneBytes(scene: Scene): number[] {
   bytes.push(scene.room.size & 127, scene.room.damp & 127, scene.room.mix & 127, scene.drive & 127);
   for (const s of scene.inSend) bytes.push(s.d & 127, s.r & 127);
   for (const v of scene.voice) bytes.push((v.sendD || 0) & 127, (v.sendR || 0) & 127);
+  for (const v of scene.voice) bytes.push((v.pa || 0) & 127, (v.pb || 0) & 127);
   return bytes;
 }
 
@@ -109,7 +110,17 @@ export function sendQueue() {
 function readScene(d: number[], i: number): { scene: Scene; next: number } {
   const voice = [];
   for (let v = 0; v < 4; v++) {
-    voice.push({ decay: d[i++], tone: d[i++], model: d[i++] & 3, pitch: d[i++], aux: d[i++], sendD: 0, sendR: 0 });
+    voice.push({
+      decay: d[i++],
+      tone: d[i++],
+      model: d[i++] & 3,
+      pitch: d[i++],
+      aux: d[i++],
+      sendD: 0,
+      sendR: 0,
+      pa: 0,
+      pb: 0,
+    });
   }
   const mix = [];
   for (let c = 0; c < 6; c++) mix.push({ level: d[i++], pan: d[i++] });
@@ -128,6 +139,10 @@ function readScene(d: number[], i: number): { scene: Scene; next: number } {
   for (let v = 0; v < 4; v++) {
     voice[v].sendD = i < d.length ? d[i++] : 0;
     voice[v].sendR = i < d.length ? d[i++] : 0;
+  }
+  for (let v = 0; v < 4; v++) {
+    voice[v].pa = i < d.length ? d[i++] : 0;
+    voice[v].pb = i < d.length ? d[i++] : 0;
   }
   return { scene, next: i };
 }
@@ -150,6 +165,36 @@ export function sendClear(pat: number, tr: number) {
 
 export function sendCopy(dst: number, src: number) {
   send([CMD.copyPattern, dst, src]);
+}
+
+export function sendDrumLock(pat: number, tr: number, step: number, row: (number | null)[]) {
+  let lo = 0;
+  let hi = 0;
+  const nibs: number[] = [];
+  for (let i = 0; i < 10; i++) {
+    const n = row[i];
+    if (n == null) nibs.push(0);
+    else {
+      if (i < 7) lo |= 1 << i;
+      else hi |= 1 << (i - 7);
+      nibs.push(n & 15);
+    }
+  }
+  send([CMD.lock, pat & 7, tr & 3, step & 31, lo & 127, hi & 7, ...nibs]);
+}
+
+export function sendFxLock(pat: number, step: number, row: (number | null)[]) {
+  let mask = 0;
+  const nibs: number[] = [];
+  for (let i = 0; i < 7; i++) {
+    const n = row[i];
+    if (n == null) nibs.push(0);
+    else {
+      mask |= 1 << i;
+      nibs.push(n & 15);
+    }
+  }
+  send([CMD.lock, pat & 7, 0x40, step & 31, mask & 127, ...nibs]);
 }
 
 export function sendSave() {
@@ -220,6 +265,8 @@ function handle(d: number[]) {
         aux: d[i++],
         sendD: project.voice[v]?.sendD || 0,
         sendR: project.voice[v]?.sendR || 0,
+        pa: project.voice[v]?.pa || 0,
+        pb: project.voice[v]?.pb || 0,
       };
     }
     for (let c = 0; c < 6; c++) project.mix[c] = { level: d[i++], pan: d[i++] };
@@ -287,6 +334,24 @@ function handle(d: number[]) {
       project.steps[pat][tr][step] = { n: d[i++], v: d[i++], l: d[i++], f: d[i++], a: d[i++] };
     }
     applyRemote(project);
+    return;
+  }
+  if (d[0] === CMD.lock && d.length >= 6) {
+    const pat = d[1] & 7;
+    const tr = d[2];
+    const step = d[3] & 31;
+    if (!project.stepPar || !project.fxPar) return;
+    if (tr === 0x40 && d.length >= 12) {
+      const mask = d[4] & 127;
+      for (let i = 0; i < 7; i++) project.fxPar[pat][step][i] = mask & (1 << i) ? d[5 + i] & 15 : null;
+      applyRemote(project);
+      return;
+    }
+    if (tr < 4 && d.length >= 16) {
+      const mask = (d[4] & 127) | ((d[5] & 7) << 7);
+      for (let i = 0; i < 10; i++) project.stepPar[pat][tr][step][i] = mask & (1 << i) ? d[6 + i] & 15 : null;
+      applyRemote(project);
+    }
     return;
   }
   if (d[0] === CMD.playhead && d.length >= 8) {

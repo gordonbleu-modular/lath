@@ -24,6 +24,10 @@ function createEngine(sr) {
     click: 0,
     tone: 0.4,
     aux: 0.5,
+    pa: 0,
+    pb: 0,
+    snap: 0,
+    hi: 0,
     model: 0,
     sendD: 0,
     sendB: 0,
@@ -82,10 +86,31 @@ function createEngine(sr) {
     stepLen = Math.max(64, Math.floor(even ? base + delta : base - delta));
   }
 
-  function triggerDrum(t, note, vel, len, fx, fxv) {
+  function nib127(n) {
+    return Math.round((Math.max(0, Math.min(15, n | 0)) * 127) / 15);
+  }
+  function panNib(n) {
+    const x = Math.max(0, Math.min(15, n | 0));
+    if (x <= 8) return x * 8;
+    return 64 + Math.round(((x - 8) * 63) / 7);
+  }
+  function takeLock(row, idx, preset, mode) {
+    if (!row || row[idx] == null || row[idx] < 0) return preset;
+    const n = row[idx] | 0;
+    if (mode === "pitch") return Math.max(0, Math.min(48, n * 3));
+    if (mode === "pan") return panNib(n);
+    if (mode === "time") return n & 7;
+    return nib127(n);
+  }
+
+  function triggerDrum(t, note, vel, len, fx, fxv, step) {
     const voice = project.voice[t];
     const v = vox[t];
-    let tone = voice.tone / 127;
+    const row = step != null && project.stepPar ? project.stepPar[project.pattern]?.[t]?.[step] : null;
+    const decayV = takeLock(row, 0, voice.decay, "n");
+    let tone = takeLock(row, 1, voice.tone, "n") / 127;
+    const pitchV = takeLock(row, 2, voice.pitch, "pitch");
+    const auxV = takeLock(row, 3, voice.aux, "n");
     let sendD = 0;
     let sendB = 0;
     let crush = 0;
@@ -93,16 +118,20 @@ function createEngine(sr) {
     if (fx === 3) sendB = fxv / 127;
     if (fx === 4) crush = fxv / 127;
     if (fx === 7) tone = fxv / 127;
-    let n = note + (voice.pitch - 24);
+    let n = note + (pitchV - 24);
     if (fx === 5) n += fxv - 24;
     n = clamp(n | 0, 1, 127);
     const f = hz(n);
     v.env = vel / 127;
-    const decay = len > 0 ? (voice.decay / 127) * (len / 32) : voice.decay / 127;
+    const decay = len > 0 ? (decayV / 127) * (len / 32) : decayV / 127;
     const seconds = 0.045 + decay * 0.85;
     v.coef = Math.exp(-1 / (seconds * sr));
     v.tone = tone;
-    v.aux = voice.aux / 127;
+    v.aux = auxV / 127;
+    v.pa = takeLock(row, 4, voice.pa || 0, "n") / 127;
+    v.pb = takeLock(row, 5, voice.pb || 0, "n") / 127;
+    v.snap = 1;
+    v.hi = Math.random() * 6.28;
     v.model = voice.model & 3;
     v.sendD = sendD;
     v.sendB = sendB;
@@ -152,7 +181,7 @@ function createEngine(sr) {
       else cv[t - 4].gate = 0;
       return;
     }
-    if (t < 4) triggerDrum(t, cell.n, cell.v, cell.l, fromRetrig ? 0 : cell.f, cell.a);
+    if (t < 4) triggerDrum(t, cell.n, cell.v, cell.l, fromRetrig ? 0 : cell.f, cell.a, step);
     else triggerCv(t - 4, !fromRetrig && cell.f === 5 ? cell.n + cell.a - 24 : cell.n, cell.v, cell.l);
     if (!fromRetrig && cell.f === 1) {
       const times = Math.max(2, Math.min(8, cell.a || 2));
@@ -269,7 +298,7 @@ function createEngine(sr) {
         const mod = Math.sin(v.mod);
         const index = v.env * (2.4 + v.tone * 6);
         v.phase += (2 * Math.PI * (v.freq + mod * v.freq * index * 0.22)) / sr;
-        const partial = Math.sin(v.phase * 5.31);
+        const partial = Math.sin(v.phase * (5.31 + v.pb * 6));
         s = Math.tanh((Math.sin(v.phase) * 0.78 + partial * 0.28) * (1.2 + v.aux));
       } else if (model === 1) {
         v.phase += (2 * Math.PI * v.target * 0.5) / sr;
@@ -288,6 +317,29 @@ function createEngine(sr) {
         v.phase += (2 * Math.PI * (v.freq + mod * v.freq * index * 0.35)) / sr;
         s = Math.tanh(Math.sin(v.phase) * (1 + v.aux));
       }
+    }
+    if (t === 0 && v.pa > 0) {
+      let y = s * (1 + v.pa * 3.2);
+      for (let k = 0; k < 2; k++) {
+        if (y > 0.62) y = 1.24 - y;
+        else if (y < -0.62) y = -1.24 - y;
+      }
+      s = Math.max(-1, Math.min(1, y));
+    }
+    if (t === 0 && v.pb > 0) s = Math.tanh(s * (1 + v.pb * 3.2));
+    if (t === 1 && v.pb > 0) {
+      const oct = Math.min(4, 2 + ((v.pa * 4) | 0));
+      v.hi += (2 * Math.PI * v.target * (1 << oct)) / sr / 8;
+      s += (Math.sin(v.hi) > 0 ? 1 : -1) * v.pb * 0.55;
+    }
+    if (t === 2 && v.pa > 0) s = Math.tanh(s * (1 + v.pa * 4));
+    if (t === 2 && v.pb > 0) {
+      s += noise() * v.snap * v.pb * 0.9;
+      v.snap *= Math.max(0.45, 0.92 - v.pb * 0.35);
+    }
+    if (t === 3 && v.pa > 0) {
+      s += noise() * v.click * v.pa * 0.85;
+      v.click *= 0.5;
     }
     if (v.crush > 0.05) {
       const n = 1 + ((v.crush * 14) | 0);
@@ -321,6 +373,8 @@ function createEngine(sr) {
         aux: lerp(v.aux, b.voice[i].aux, t),
         sendD: lerp(v.sendD || 0, b.voice[i].sendD || 0, t),
         sendR: lerp(v.sendR || 0, b.voice[i].sendR || 0, t),
+        pa: lerp(v.pa || 0, b.voice[i].pa || 0, t),
+        pb: lerp(v.pb || 0, b.voice[i].pb || 0, t),
       })),
       mix: a.mix.map((c, i) => ({
         level: lerp(c.level, b.mix[i].level, t),
@@ -355,7 +409,7 @@ function createEngine(sr) {
     if (!project) return [0, 0];
     if (pending.length) {
       const a = pending.shift();
-      if (a.t < 4) triggerDrum(a.t, a.n, a.v, a.l, a.f, a.a);
+      if (a.t < 4) triggerDrum(a.t, a.n, a.v, a.l, a.f, a.a, null);
       else triggerCv(a.t - 4, a.n, a.v, a.l);
     }
     if (running && !ext) {
@@ -368,10 +422,12 @@ function createEngine(sr) {
     let bus = 0;
     let extraD = 0;
     let extraB = 0;
+    const patNow = project.pattern;
     for (let t = 0; t < 4; t++) {
       let s = renderVoice(t);
-      const level = project.mix[t].level / 127;
-      const pan = project.mix[t].pan / 127;
+      const row = running && project.stepPar ? project.stepPar[patNow]?.[t]?.[pos[t]] : null;
+      const level = takeLock(row, 6, project.mix[t].level, "n") / 127;
+      const pan = takeLock(row, 7, project.mix[t].pan, "pan") / 127;
       s *= level;
       drumL += s * (1 - pan);
       drumR += s * pan;
@@ -379,8 +435,8 @@ function createEngine(sr) {
       extraD += s * vox[t].sendD;
       extraB += s * vox[t].sendB;
       const vs = project.voice[t] || {};
-      extraD += s * ((vs.sendD || 0) / 127);
-      extraB += s * ((vs.sendR || 0) / 127);
+      extraD += s * (takeLock(row, 8, vs.sendD || 0, "n") / 127);
+      extraB += s * (takeLock(row, 9, vs.sendR || 0, "n") / 127);
     }
     // Stand-in oscillators so the CV tracks are audible without the modular.
     let cvL = 0;
@@ -408,7 +464,26 @@ function createEngine(sr) {
     }
     let dryL = drumL;
     let dryR = drumR;
-    const drv = project.drive / 127;
+    let delay = project.delay;
+    let room = project.room;
+    let drive = project.drive;
+    if (running && project.fxPar) {
+      const fx = project.fxPar[project.pattern]?.[pos[0]];
+      if (fx) {
+        delay = {
+          time: takeLock(fx, 0, delay.time, "time"),
+          fb: takeLock(fx, 1, delay.fb, "n"),
+          mix: takeLock(fx, 2, delay.mix, "n"),
+        };
+        room = {
+          size: takeLock(fx, 3, room.size, "n"),
+          damp: takeLock(fx, 4, room.damp, "n"),
+          mix: takeLock(fx, 5, room.mix, "n"),
+        };
+        drive = takeLock(fx, 6, drive, "n");
+      }
+    }
+    const drv = drive / 127;
     if (drv > 0) {
       const k = 1 + drv * 6;
       const norm = Math.tanh(k);
@@ -420,12 +495,12 @@ function createEngine(sr) {
     dryR += cvR;
     const divs = [1, 2, 3, 4, 6, 8, 12, 16];
     const base = (sr * 60) / project.bpm / 4;
-    let age = Math.floor(base * divs[project.delay.time & 7]);
+    let age = Math.floor(base * divs[delay.time & 7]);
     age = clamp(age, 32, delayLen - 2);
     let r = delayW - age;
     if (r < 0) r += delayLen;
     const wet = delay[r | 0];
-    const fb = (project.delay.fb / 127) * 0.82;
+    const fb = (delay.fb / 127) * 0.82;
     const din = extraD;
     let rec = din + wet * fb;
     rec = Math.tanh(rec);
@@ -436,9 +511,9 @@ function createEngine(sr) {
     if (r2 < 0) r2 += delayLen;
     const wetR = delay[r2 | 0];
 
-    const sz = project.room.size | 0;
+    const sz = room.size | 0;
     const freeze = sz >= 124;
-    const damp = (20 + ((project.room.damp | 0) >> 1)) / 256;
+    const damp = (20 + ((room.damp | 0) >> 1)) / 256;
     const roomFb = Math.min(246, 160 + ((sz * 90) >> 7)) / 256;
     const rin = extraB * (freeze ? 0.08 : 0.55);
     let tankL = 0;
@@ -467,8 +542,8 @@ function createEngine(sr) {
     tankL += tank * 0.5;
     tankR += tank * 0.5;
     const master = (project.master / 127) * 0.85 * monitor;
-    const dVol = (project.delay.mix || 0) / 127;
-    const rVol = (project.room.mix || 0) / 127;
+    const dVol = (delay.mix || 0) / 127;
+    const rVol = (room.mix || 0) / 127;
     let L = (dryL + wet * 0.55 * dVol + tankL * 0.28 * rVol) * master;
     let R = (dryR + wetR * 0.55 * dVol + tankR * 0.28 * rVol) * master;
     if (L > 1) L = 1;
@@ -486,9 +561,16 @@ function createEngine(sr) {
       recompute();
     },
     setRunning(r) {
-      const edge = r && !running;
+      const start = r && !running;
+      const stop = !r && running;
       running = r;
-      if (edge && acc === 0 && project) {
+      if (stop) {
+        pos = [0, 0, 0, 0, 0, 0];
+        master = 0;
+        acc = 0;
+        for (let t = 0; t < 6; t++) retrigLeft[t] = 0;
+      }
+      if (start && project) {
         recompute();
         for (let t = 0; t < 6; t++) fire(t, pos[t], false);
       }

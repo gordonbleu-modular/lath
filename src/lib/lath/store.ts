@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { factoryProject } from "./factory";
 import type { Project, Scene } from "./types";
-import { clamp } from "./types";
+import { clamp, emptyDrumLocks, emptyFxLocks } from "./types";
 
 const KEY = "lath.project.v1";
 
@@ -17,6 +17,7 @@ export type LathState = {
   octave: number;
   hardwareClock: boolean;
   hold: number;
+  kitEdit: boolean;
   set: (partial: Partial<LathState>) => void;
 };
 
@@ -32,6 +33,7 @@ export const useLath = create<LathState>((set) => ({
   octave: 2,
   hardwareClock: false,
   hold: 0,
+  kitEdit: false,
   set: (partial) => set(partial),
 }));
 
@@ -94,6 +96,31 @@ export function normalize(project: Project): Project {
     for (const v of scene.voice) {
       if (v.sendD == null) v.sendD = 0;
       if (v.sendR == null) v.sendR = 0;
+      if (v.pa == null) v.pa = 0;
+      if (v.pb == null) v.pb = 0;
+    }
+  }
+  for (const v of project.voice || []) {
+    if (v.pa == null) v.pa = 0;
+    if (v.pb == null) v.pb = 0;
+  }
+  if (!project.stepPar || project.stepPar.length !== 8) project.stepPar = emptyDrumLocks();
+  if (!project.fxPar || project.fxPar.length !== 8) project.fxPar = emptyFxLocks();
+  for (let p = 0; p < 8; p++) {
+    if (!project.stepPar[p] || project.stepPar[p].length !== 4) project.stepPar[p] = emptyDrumLocks()[p];
+    for (let t = 0; t < 4; t++) {
+      if (!project.stepPar[p][t] || project.stepPar[p][t].length < 32) project.stepPar[p][t] = emptyDrumLocks()[p][t];
+      for (let s = 0; s < 32; s++) {
+        const row = project.stepPar[p][t][s];
+        if (!row || row.length !== 10) project.stepPar[p][t][s] = Array.from({ length: 10 }, () => null);
+        else for (let k = 0; k < 10; k++) if (row[k] == null || row[k]! < 0) row[k] = null;
+      }
+    }
+    if (!project.fxPar[p] || project.fxPar[p].length < 32) project.fxPar[p] = emptyFxLocks()[p];
+    for (let s = 0; s < 32; s++) {
+      const row = project.fxPar[p][s];
+      if (!row || row.length !== 7) project.fxPar[p][s] = Array.from({ length: 7 }, () => null);
+      else for (let k = 0; k < 7; k++) if (row[k] == null || row[k]! < 0) row[k] = null;
     }
   }
   if (!project.returns) {

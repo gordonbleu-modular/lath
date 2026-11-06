@@ -155,11 +155,29 @@ select {
   border-top: 1px solid var(--color-border);
 }
 
-.desk-col > .chans {
+.desk-col > .chans-wrap {
   grid-column: 1 / -1;
   grid-row: 1;
+  display: flex;
   min-height: 0;
+  flex-direction: column;
   overflow: hidden;
+}
+
+.kit-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.12rem 0.35rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.kit-bar .hint {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .desk-col > .fx-groups {
@@ -171,6 +189,12 @@ select {
   grid-column: 2;
   grid-row: 2;
   border-top: 1px solid var(--color-border);
+}
+
+.chans-wrap > .chans {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .chans {
@@ -188,6 +212,20 @@ select {
   gap: 0.1rem;
   border-right: 1px solid var(--color-border);
   padding: 0.2rem 0.2rem 0.15rem;
+}
+
+.chan.hot {
+  background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+}
+
+.fx-groups.hot {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 45%, transparent);
+}
+
+.knob-cap.locked,
+.fader.locked,
+.slider.locked select {
+  box-shadow: 0 0 0 1px var(--color-accent);
 }
 
 .chan h2 {
@@ -267,8 +305,8 @@ select {
 }
 
 .chan .sound-box .knob-cap {
-  width: 2.05rem;
-  height: 2.05rem;
+  width: 1.72rem;
+  height: 1.72rem;
 }
 
 .chan .sound-box .knob {
