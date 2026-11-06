@@ -252,7 +252,11 @@ export function LathTracker() {
                             >
                               <span>{noteName(c.n)}</span>
                               {c.n ? <span className="vel">{c.v}</span> : null}
-                              {c.f ? <span className="fxmark">{FX[c.f]?.name}</span> : null}
+                              {c.f ? (
+                                <span className="fxmark">
+                                  {FX[c.f]?.name} {c.a}
+                                </span>
+                              ) : null}
                             </button>
                           );
                         })}
@@ -373,47 +377,66 @@ export function LathTracker() {
               <span className="text-sm text-accent">Effects</span>
               <Banks scene={project.scene} />
             </div>
-            <label className="slider span2">
-              Delay time
-              <select className="bg-surface text-fg" value={bank.delay.time} onChange={(e) => setDelay("time", Number(e.target.value))}>
-                {DELAY_TIMES.map((name, i) => (
-                  <option key={name} value={i}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <Knob label="Feedback" min={0} max={127} value={bank.delay.fb} onChange={(v) => setDelay("fb", v)} />
-            <Knob label="Drum delay" min={0} max={127} value={bank.delay.mix} onChange={(v) => setDelay("mix", v)} />
-            <Knob label="Room size" min={0} max={127} value={bank.room.size} onChange={(v) => setRoom("size", v)} />
-            <Knob label="Damp" min={0} max={127} value={bank.room.damp} onChange={(v) => setRoom("damp", v)} />
-            <Knob label="Drum room" min={0} max={127} value={bank.room.mix} onChange={(v) => setRoom("mix", v)} />
-            <Knob label="Drive" min={0} max={127} value={bank.drive} onChange={setDrive} />
+            <div className="fx-groups">
+              <section className="fx-group">
+                <h3>Delay</h3>
+                <label className="slider">
+                  Time
+                  <select className="bg-surface text-fg" value={bank.delay.time} onChange={(e) => setDelay("time", Number(e.target.value))}>
+                    {DELAY_TIMES.map((name, i) => (
+                      <option key={name} value={i}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="fx-knobs">
+                  <Knob label="Feedback" min={0} max={127} value={bank.delay.fb} onChange={(v) => setDelay("fb", v)} />
+                  <Knob label="Send" min={0} max={127} value={bank.delay.mix} onChange={(v) => setDelay("mix", v)} />
+                </div>
+              </section>
+              <section className="fx-group">
+                <h3>Room</h3>
+                <div className="fx-knobs">
+                  <Knob label="Size" min={0} max={127} value={bank.room.size} onChange={(v) => setRoom("size", v)} />
+                  <Knob label="Damp" min={0} max={127} value={bank.room.damp} onChange={(v) => setRoom("damp", v)} />
+                  <Knob label="Send" min={0} max={127} value={bank.room.mix} onChange={(v) => setRoom("mix", v)} />
+                </div>
+              </section>
+              <section className="fx-group">
+                <h3>Drive</h3>
+                <div className="fx-knobs">
+                  <Knob label="Amount" min={0} max={127} value={bank.drive} onChange={setDrive} />
+                </div>
+              </section>
+            </div>
             <div className="voice-head">
               <span className="text-sm text-accent">Panel</span>
             </div>
-            <Slider label={connected ? "Main knob" : "Morph"} min={0} max={127} value={project.morph} disabled={connected} onChange={setMorph} />
-            <label className="slider">
-              Knob X
-              <select className="bg-surface text-fg" value={project.knobX} onChange={(e) => setKnob("knobX", Number(e.target.value))}>
-                {KNOB_TARGETS.map((name, i) => (
-                  <option key={name} value={i}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="slider">
-              Knob Y
-              <select className="bg-surface text-fg" value={project.knobY} onChange={(e) => setKnob("knobY", Number(e.target.value))}>
-                {KNOB_TARGETS.map((name, i) => (
-                  <option key={name} value={i}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="hint span2 flex items-center gap-2">
+            <div className="panel-row">
+              <Slider label={connected ? "Main knob" : "Morph"} min={0} max={127} value={project.morph} disabled={connected} onChange={setMorph} />
+              <label className="slider">
+                Knob X
+                <select className="bg-surface text-fg" value={project.knobX} onChange={(e) => setKnob("knobX", Number(e.target.value))}>
+                  {KNOB_TARGETS.map((name, i) => (
+                    <option key={name} value={i}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="slider">
+                Knob Y
+                <select className="bg-surface text-fg" value={project.knobY} onChange={(e) => setKnob("knobY", Number(e.target.value))}>
+                  {KNOB_TARGETS.map((name, i) => (
+                    <option key={name} value={i}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <label className="hint flex items-center gap-2">
               <input type="checkbox" checked={ext} onChange={(e) => setExt(e.target.checked)} />
               External clock. Pulse in 1 steps, pulse in 2 resets.
             </label>
@@ -505,14 +528,42 @@ function Fader({ label, value, min, max, onChange }: { label: string; value: num
   );
 }
 
-function Knob({ label, value, min, max, onChange }: { label: string; value: number; min: number; max: number; onChange: (n: number) => void }) {
+function knobAngle(value: number, min: number, max: number, pan: boolean) {
+  if (pan) {
+    const center = min === 0 && max === 127 ? 64 : (min + max) / 2;
+    if (value <= center) {
+      const t = center === min ? 0 : (value - min) / (center - min);
+      return -150 + t * 150;
+    }
+    const t = max === center ? 1 : (value - center) / (max - center);
+    return t * 150;
+  }
   const t = max === min ? 0 : (value - min) / (max - min);
-  const angle = -140 + t * 280;
+  return -150 + t * 300;
+}
+
+function Knob({
+  label,
+  value,
+  min,
+  max,
+  pan,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  pan?: boolean;
+  onChange: (n: number) => void;
+}) {
+  const angle = knobAngle(value, min, max, !!pan);
+  const readout = pan ? (value === 64 ? "C" : value < 64 ? `L${64 - value}` : `R${value - 64}`) : String(value);
   return (
     <div className="knob">
       <button
         type="button"
-        className="knob-cap"
+        className={pan ? "knob-cap pan" : "knob-cap"}
         role="slider"
         aria-label={label}
         aria-valuemin={min}
@@ -528,10 +579,12 @@ function Knob({ label, value, min, max, onChange }: { label: string; value: numb
           onChange(Math.max(min, Math.min(max, value + (e.deltaY < 0 ? 1 : -1))));
         }}
       >
-        <span className="knob-mark" style={{ transform: `rotate(${angle}deg)` }} />
+        <span className="knob-rotor" style={{ transform: `rotate(${angle}deg)` }}>
+          <span className="knob-mark" />
+        </span>
       </button>
       <span>{label}</span>
-      <span className="text-fg">{value}</span>
+      <span className="text-fg">{readout}</span>
     </div>
   );
 }
@@ -562,7 +615,7 @@ function Strip({
       <h2>{name}</h2>
       <Fader label="Level" min={0} max={127} value={level} onChange={onLevel} />
       <div className="strip-knobs">
-        <Knob label="Pan" min={0} max={127} value={pan} onChange={onPan} />
+        <Knob pan label="Pan" min={0} max={127} value={pan} onChange={onPan} />
         {onDelay && delay != null ? <Knob label="Delay" min={0} max={127} value={delay} onChange={onDelay} /> : null}
         {onRoom && room != null ? <Knob label="Room" min={0} max={127} value={room} onChange={onRoom} /> : null}
       </div>

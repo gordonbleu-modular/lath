@@ -444,29 +444,78 @@ select {
   padding: 0;
 }
 
+.knob-cap.pan::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 2px;
+  width: 2px;
+  height: 3px;
+  margin-left: -1px;
+  background: var(--color-led);
+}
+
+.knob-rotor {
+  position: absolute;
+  inset: 0;
+}
+
 .knob-mark {
   position: absolute;
   left: 50%;
-  top: 50%;
+  top: 14%;
   width: 2px;
-  height: 38%;
+  height: 30%;
   margin-left: -1px;
+  border-radius: 1px;
   background: var(--color-fg);
-  transform-origin: 50% 0;
 }
 
 .fx-desk {
-  display: grid;
+  display: flex;
   min-height: 0;
-  grid-template-columns: 1fr 1fr 1fr;
-  align-content: start;
-  gap: 0.4rem 0.45rem;
+  flex-direction: column;
+  gap: 0.4rem;
   overflow: hidden;
   padding: 0.35rem 0.5rem;
 }
 
+.fx-groups {
+  display: grid;
+  grid-template-columns: 1.15fr 1.25fr 0.7fr;
+  gap: 0.6rem;
+}
+
+.fx-group {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.35rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  padding: 0.3rem 0.4rem 0.4rem;
+}
+
+.fx-group h3 {
+  font-size: 0.68rem;
+  line-height: 1;
+  color: var(--color-accent);
+}
+
+.fx-knobs {
+  display: flex;
+  justify-content: space-around;
+  gap: 0.35rem;
+}
+
 .fx-desk .song {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.panel-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 0.45rem;
 }
 
 .song {
