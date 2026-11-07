@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { factoryProject } from "./factory";
 import type { Project, Scene } from "./types";
-import { clamp, emptyDrumLocks, emptyFxLocks } from "./types";
+import { clamp, drumFromNib, emptyDrumLocks, emptyFxLocks, fxFromNib } from "./types";
 
 const KEY = "lath.project.v1";
 
@@ -138,6 +138,21 @@ export function normalize(project: Project): Project {
       }
     }
     project.returns = 1;
+  }
+  if (!project.locksFull) {
+    for (const pat of project.stepPar) {
+      for (const tr of pat) {
+        for (const row of tr) {
+          for (let i = 0; i < row.length; i++) if (row[i] != null) row[i] = drumFromNib(i, row[i] as number);
+        }
+      }
+    }
+    for (const pat of project.fxPar) {
+      for (const row of pat) {
+        for (let i = 0; i < row.length; i++) if (row[i] != null) row[i] = fxFromNib(i, row[i] as number);
+      }
+    }
+    project.locksFull = 1;
   }
   return project;
 }

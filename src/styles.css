@@ -682,6 +682,8 @@ select {
   border-radius: 999px;
   background: radial-gradient(circle at 35% 30%, #3a3c42, #101114 70%);
   padding: 0;
+  cursor: ns-resize;
+  touch-action: none;
 }
 
 .knob-cap.pan::after {

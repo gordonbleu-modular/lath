@@ -26,7 +26,7 @@ Everything is on one screen. The grid is a narrow column on the left. The step y
 
 The grid is six tracks, at most 32 steps. Each track has its own length. Steps past that length are dim. The header of a track shortens it, lengthens it, or mutes it. **Stop** puts every playhead back on step 1.
 
-Click a step. That instrument's strip lights up, and the knobs show that step. Dragging a knob writes the step only, and the knob gets a gold ring. Double-click it to follow the preset again. **Kit** edits the preset itself, which is what unlocked steps and the big knob use. **Step** goes back to editing the selected step. Effects follow the selected step while you edit, and Pipe's playhead while the pattern plays.
+Click a step. That instrument's strip lights up, and the knobs show that step. Drag a knob up to turn it up, and down to turn it down. The knob gets a gold ring because that step now has its own value. Double-click a knob to put it back to 0, or to center on pan and pitch. **Kit** edits the preset itself, which is what unlocked steps and the big knob use. **Step** goes back to editing the selected step. Effects follow the selected step while you edit, and Pipe's playhead while the pattern plays.
 
 The note buttons, or the computer keyboard: Z is C, the Q row is the octave above. Comma and period move the octave. **Rest** clears the step. **Velocity** and **Length** sit under the notes. On the CV tracks, length is the gate time.
 

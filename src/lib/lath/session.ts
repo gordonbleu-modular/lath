@@ -20,12 +20,24 @@ import {
 } from "./midi";
 import { persist, useLath } from "./store";
 import type { Project, Scene, Step } from "./types";
-import { clamp, drumToNib, fxToNib } from "./types";
+import { clamp } from "./types";
 
 function commit(project: Project) {
   useLath.setState({ project, hold: Date.now() + 900 });
-  persist(project);
   pushProject(project);
+  schedulePersist(project);
+}
+
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+let persistPending: Project | null = null;
+function schedulePersist(project: Project) {
+  persistPending = project;
+  if (persistTimer) return;
+  persistTimer = setTimeout(() => {
+    persistTimer = null;
+    if (persistPending) persist(persistPending);
+    persistPending = null;
+  }, 120);
 }
 
 function mirror(project: Project) {
@@ -148,7 +160,11 @@ export function setDrumLock(track: number, step: number, index: number, value: n
   const pat = current().pattern;
   const project = editProject((p) => {
     const row = p.stepPar[pat][track][step];
-    row[index] = value == null ? null : drumToNib(index, value);
+    if (value == null) row[index] = null;
+    else if (index === 2) row[index] = clamp(value, 0, 48);
+    else if (index === 0) row[index] = clamp(value, 1, 127);
+    else row[index] = clamp(value, 0, 127);
+    p.locksFull = 1;
   });
   sendDrumLock(pat, track, step, project.stepPar[pat][track][step]);
 }
@@ -157,7 +173,9 @@ export function setFxLock(step: number, index: number, value: number | null) {
   const pat = current().pattern;
   const project = editProject((p) => {
     const row = p.fxPar[pat][step];
-    row[index] = value == null ? null : fxToNib(index, value);
+    if (value == null) row[index] = null;
+    else row[index] = index === 0 ? clamp(value, 0, 7) : clamp(value, 0, 127);
+    p.locksFull = 1;
   });
   sendFxLock(pat, step, project.fxPar[pat][step]);
 }

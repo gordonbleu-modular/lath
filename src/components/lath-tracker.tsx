@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Minus, Play, Plus, RotateCcw, Save, Square, Usb } from "lucide-react";
 import { connectCard, sendSave } from "../lib/lath/midi";
 import {
@@ -32,7 +32,7 @@ import {
 } from "../lib/lath/session";
 import { loadStored, persist, useLath } from "../lib/lath/store";
 import { pushProject, resumeAudio } from "../lib/lath/audio";
-import { DELAY_TIMES, FX, KNOB_TARGETS, MODELS, TRACKS, drumFromNib, fxFromNib, noteName } from "../lib/lath/types";
+import { DELAY_TIMES, FX, KNOB_TARGETS, MODELS, TRACKS, noteName } from "../lib/lath/types";
 import type { Step } from "../lib/lath/types";
 
 const EMPTY: Step = { n: 0, v: 0, l: 0, f: 0, a: 0 };
@@ -317,7 +317,7 @@ export function LathTracker() {
               <span className="hint">
                 {kitEdit
                   ? "Editing the preset. Steps with no gold ring follow it."
-                  : `${TRACKS[selT].name} ${String(selS + 1).padStart(2, "0")} · double-click a knob to unlock`}
+                  : `${TRACKS[selT].name} ${String(selS + 1).padStart(2, "0")} · double-click a knob for 0 or center`}
               </span>
             </div>
             <div className="chans">
@@ -445,9 +445,9 @@ function Instrument({ name, i, hot }: { name: string; i: number; hot: boolean })
   const step = Math.min(31, selS);
   const row = project.stepPar?.[project.pattern]?.[i]?.[step];
   const shown = (index: number, preset: number) => {
-    const nib = !kitEdit ? row?.[index] : null;
-    if (nib == null) return { value: preset, locked: false };
-    return { value: drumFromNib(index, nib), locked: true };
+    const held = !kitEdit ? row?.[index] : null;
+    if (held == null) return { value: preset, locked: false };
+    return { value: held, locked: true };
   };
   const edit = (index: number, v: number) => {
     if (kitEdit) {
@@ -465,7 +465,6 @@ function Instrument({ name, i, hot }: { name: string; i: number; hot: boolean })
     }
     setDrumLock(i, step, index, v);
   };
-  const reset = (index: number) => setDrumLock(i, step, index, null);
   const decay = shown(0, voice.decay);
   const tone = shown(1, voice.tone);
   const pitch = shown(2, voice.pitch);
@@ -494,21 +493,21 @@ function Instrument({ name, i, hot }: { name: string; i: number; hot: boolean })
         <div className="mix-box">
           <span className="box-label">Mix</span>
           <div className="mix-controls">
-            <Fader label="Vol" min={0} max={127} value={level.value} locked={level.locked} onChange={(v) => edit(6, v)} onReset={() => reset(6)} />
-            <Knob pan label="Pan" min={0} max={127} value={pan.value} locked={pan.locked} onChange={(v) => edit(7, v)} onReset={() => reset(7)} />
-            <Knob label="Dly" min={0} max={127} value={dly.value} locked={dly.locked} onChange={(v) => edit(8, v)} onReset={() => reset(8)} />
-            <Knob label="Rm" min={0} max={127} value={room.value} locked={room.locked} onChange={(v) => edit(9, v)} onReset={() => reset(9)} />
+            <Fader label="Vol" min={0} max={127} value={level.value} locked={level.locked} onChange={(v) => edit(6, v)} onReset={() => setDrumLock(i, step, 6, null)} />
+            <Knob pan label="Pan" min={0} max={127} value={pan.value} locked={pan.locked} onChange={(v) => edit(7, v)} />
+            <Knob label="Dly" min={0} max={127} value={dly.value} locked={dly.locked} onChange={(v) => edit(8, v)} />
+            <Knob label="Rm" min={0} max={127} value={room.value} locked={room.locked} onChange={(v) => edit(9, v)} />
           </div>
         </div>
         <div className="sound-box">
           <span className="box-label">{name}</span>
           <div className="sound-knobs">
-            <Knob label="Decay" min={1} max={127} value={decay.value} locked={decay.locked} onChange={(v) => edit(0, v)} onReset={() => reset(0)} />
-            <Knob label="Tone" min={0} max={127} value={tone.value} locked={tone.locked} onChange={(v) => edit(1, v)} onReset={() => reset(1)} />
-            <Knob label="Pitch" min={0} max={48} value={pitch.value} locked={pitch.locked} onChange={(v) => edit(2, v)} onReset={() => reset(2)} />
-            <Knob label={aux} min={0} max={127} value={auxV.value} locked={auxV.locked} onChange={(v) => edit(3, v)} onReset={() => reset(3)} />
-            <Knob label={EXTRAS[i][0]} min={0} max={127} value={pa.value} locked={pa.locked} onChange={(v) => edit(4, v)} onReset={() => reset(4)} />
-            <Knob label={EXTRAS[i][1]} min={0} max={127} value={pb.value} locked={pb.locked} onChange={(v) => edit(5, v)} onReset={() => reset(5)} />
+            <Knob label="Decay" min={1} max={127} value={decay.value} locked={decay.locked} onChange={(v) => edit(0, v)} />
+            <Knob label="Tone" min={0} max={127} value={tone.value} locked={tone.locked} onChange={(v) => edit(1, v)} />
+            <Knob label="Pitch" min={0} max={48} value={pitch.value} locked={pitch.locked} onChange={(v) => edit(2, v)} />
+            <Knob label={aux} min={0} max={127} value={auxV.value} locked={auxV.locked} onChange={(v) => edit(3, v)} />
+            <Knob label={EXTRAS[i][0]} min={0} max={127} value={pa.value} locked={pa.locked} onChange={(v) => edit(4, v)} />
+            <Knob label={EXTRAS[i][1]} min={0} max={127} value={pb.value} locked={pb.locked} onChange={(v) => edit(5, v)} />
           </div>
         </div>
       </div>
@@ -522,9 +521,9 @@ function FxTime() {
   const kitEdit = useLath((s) => s.kitEdit);
   const bank = project.scenes[project.scene] ?? project.scenes[0];
   const step = Math.min(31, selS);
-  const nib = !kitEdit ? project.fxPar?.[project.pattern]?.[step]?.[0] : null;
-  const locked = nib != null;
-  const value = locked ? fxFromNib(0, nib) : bank.delay.time;
+  const held = !kitEdit ? project.fxPar?.[project.pattern]?.[step]?.[0] : null;
+  const locked = held != null;
+  const value = locked ? held : bank.delay.time;
   return (
     <label className={locked ? "slider locked" : "slider"} onDoubleClick={() => setFxLock(step, 0, null)}>
       Time
@@ -552,9 +551,9 @@ function FxKnob({ index, label, preset, room }: { index: number; label: string; 
   const selS = useLath((s) => s.selS);
   const kitEdit = useLath((s) => s.kitEdit);
   const step = Math.min(31, selS);
-  const nib = !kitEdit ? project.fxPar?.[project.pattern]?.[step]?.[index] : null;
-  const locked = nib != null;
-  const value = locked ? fxFromNib(index, nib) : preset;
+  const held = !kitEdit ? project.fxPar?.[project.pattern]?.[step]?.[index] : null;
+  const locked = held != null;
+  const value = locked ? held : preset;
   const text = room ? (value >= 124 ? "Freeze" : value >= 96 ? "Hall" : "Size") : label;
   const change = (v: number) => {
     if (!kitEdit) {
@@ -568,7 +567,7 @@ function FxKnob({ index, label, preset, room }: { index: number; label: string; 
     else if (index === 5) setRoom("mix", v);
     else setDrive(v);
   };
-  return <Knob label={text} min={0} max={127} value={value} locked={locked} onChange={change} onReset={() => setFxLock(step, index, null)} />;
+  return <Knob label={text} min={0} max={127} value={value} locked={locked} onChange={change} />;
 }
 
 function Banks({ scene }: { scene: number }) {
@@ -651,6 +650,12 @@ function knobAngle(value: number, min: number, max: number, pan: boolean) {
   return -150 + t * 300;
 }
 
+function restValue(min: number, max: number, pan?: boolean) {
+  if (pan) return min === 0 && max === 127 ? 64 : Math.round((min + max) / 2);
+  if (min === 0 && max === 48) return 24;
+  return min;
+}
+
 function Knob({
   label,
   value,
@@ -659,7 +664,6 @@ function Knob({
   pan,
   locked = false,
   onChange,
-  onReset,
 }: {
   label: string;
   value: number;
@@ -668,10 +672,14 @@ function Knob({
   pan?: boolean;
   locked?: boolean;
   onChange: (n: number) => void;
-  onReset?: () => void;
 }) {
-  const angle = knobAngle(value, min, max, !!pan);
-  const readout = pan ? (value === 64 ? "C" : value < 64 ? `L${64 - value}` : `R${value - 64}`) : String(value);
+  const acc = useRef(value);
+  const dragging = useRef(false);
+  const [live, setLive] = useState<number | null>(null);
+  const shown = live ?? value;
+  const angle = knobAngle(shown, min, max, !!pan);
+  const readout = pan ? (shown === 64 ? "C" : shown < 64 ? `L${64 - shown}` : `R${shown - 64}`) : String(shown);
+  const commit = (next: number) => onChange(Math.max(min, Math.min(max, Math.round(next))));
   return (
     <div className="knob">
       <button
@@ -681,19 +689,40 @@ function Knob({
         aria-label={label}
         aria-valuemin={min}
         aria-valuemax={max}
-        aria-valuenow={value}
+        aria-valuenow={shown}
         onDoubleClick={(e) => {
           e.preventDefault();
-          onReset?.();
+          dragging.current = false;
+          setLive(null);
+          commit(restValue(min, max, pan));
         }}
-        onPointerDown={(e) => e.currentTarget.setPointerCapture(e.pointerId)}
+        onPointerDown={(e) => {
+          if (e.button !== 0) return;
+          e.currentTarget.setPointerCapture(e.pointerId);
+          dragging.current = true;
+          acc.current = value;
+          setLive(value);
+        }}
         onPointerMove={(e) => {
-          if (e.buttons !== 1) return;
-          onChange(Math.max(min, Math.min(max, Math.round(value - e.movementY * 0.7))));
+          if (!dragging.current || e.buttons !== 1) return;
+          const sens = Math.max(0.55, (max - min) / 130);
+          acc.current = Math.max(min, Math.min(max, acc.current - e.movementY * sens));
+          const next = Math.round(acc.current);
+          setLive(next);
+          commit(next);
+        }}
+        onPointerUp={() => {
+          dragging.current = false;
+          setLive(null);
+        }}
+        onPointerCancel={() => {
+          dragging.current = false;
+          setLive(null);
         }}
         onWheel={(e) => {
           e.preventDefault();
-          onChange(Math.max(min, Math.min(max, value + (e.deltaY < 0 ? 1 : -1))));
+          const step = Math.max(1, Math.round((max - min) / 20));
+          commit(value + (e.deltaY < 0 ? step : -step));
         }}
       >
         <span className="knob-rotor" style={{ transform: `rotate(${angle}deg)` }}>

@@ -86,21 +86,9 @@ function createEngine(sr) {
     stepLen = Math.max(64, Math.floor(even ? base + delta : base - delta));
   }
 
-  function nib127(n) {
-    return Math.round((Math.max(0, Math.min(15, n | 0)) * 127) / 15);
-  }
-  function panNib(n) {
-    const x = Math.max(0, Math.min(15, n | 0));
-    if (x <= 8) return x * 8;
-    return 64 + Math.round(((x - 8) * 63) / 7);
-  }
-  function takeLock(row, idx, preset, mode) {
+  function takeLock(row, idx, preset) {
     if (!row || row[idx] == null || row[idx] < 0) return preset;
-    const n = row[idx] | 0;
-    if (mode === "pitch") return Math.max(0, Math.min(48, n * 3));
-    if (mode === "pan") return panNib(n);
-    if (mode === "time") return n & 7;
-    return nib127(n);
+    return row[idx];
   }
 
   function triggerDrum(t, note, vel, len, fx, fxv, step) {
@@ -464,26 +452,26 @@ function createEngine(sr) {
     }
     let dryL = drumL;
     let dryR = drumR;
-    let delay = project.delay;
-    let room = project.room;
-    let drive = project.drive;
+    let fxDelay = project.delay;
+    let fxRoom = project.room;
+    let fxDrive = project.drive;
     if (running && project.fxPar) {
       const fx = project.fxPar[project.pattern]?.[pos[0]];
       if (fx) {
-        delay = {
-          time: takeLock(fx, 0, delay.time, "time"),
-          fb: takeLock(fx, 1, delay.fb, "n"),
-          mix: takeLock(fx, 2, delay.mix, "n"),
+        fxDelay = {
+          time: takeLock(fx, 0, fxDelay.time, "time"),
+          fb: takeLock(fx, 1, fxDelay.fb, "n"),
+          mix: takeLock(fx, 2, fxDelay.mix, "n"),
         };
-        room = {
-          size: takeLock(fx, 3, room.size, "n"),
-          damp: takeLock(fx, 4, room.damp, "n"),
-          mix: takeLock(fx, 5, room.mix, "n"),
+        fxRoom = {
+          size: takeLock(fx, 3, fxRoom.size, "n"),
+          damp: takeLock(fx, 4, fxRoom.damp, "n"),
+          mix: takeLock(fx, 5, fxRoom.mix, "n"),
         };
-        drive = takeLock(fx, 6, drive, "n");
+        fxDrive = takeLock(fx, 6, fxDrive, "n");
       }
     }
-    const drv = drive / 127;
+    const drv = fxDrive / 127;
     if (drv > 0) {
       const k = 1 + drv * 6;
       const norm = Math.tanh(k);
@@ -495,12 +483,12 @@ function createEngine(sr) {
     dryR += cvR;
     const divs = [1, 2, 3, 4, 6, 8, 12, 16];
     const base = (sr * 60) / project.bpm / 4;
-    let age = Math.floor(base * divs[delay.time & 7]);
+    let age = Math.floor(base * divs[fxDelay.time & 7]);
     age = clamp(age, 32, delayLen - 2);
     let r = delayW - age;
     if (r < 0) r += delayLen;
     const wet = delay[r | 0];
-    const fb = (delay.fb / 127) * 0.82;
+    const fb = (fxDelay.fb / 127) * 0.82;
     const din = extraD;
     let rec = din + wet * fb;
     rec = Math.tanh(rec);
@@ -511,9 +499,9 @@ function createEngine(sr) {
     if (r2 < 0) r2 += delayLen;
     const wetR = delay[r2 | 0];
 
-    const sz = room.size | 0;
+    const sz = fxRoom.size | 0;
     const freeze = sz >= 124;
-    const damp = (20 + ((room.damp | 0) >> 1)) / 256;
+    const damp = (20 + ((fxRoom.damp | 0) >> 1)) / 256;
     const roomFb = Math.min(246, 160 + ((sz * 90) >> 7)) / 256;
     const rin = extraB * (freeze ? 0.08 : 0.55);
     let tankL = 0;
@@ -542,8 +530,8 @@ function createEngine(sr) {
     tankL += tank * 0.5;
     tankR += tank * 0.5;
     const master = (project.master / 127) * 0.85 * monitor;
-    const dVol = (delay.mix || 0) / 127;
-    const rVol = (room.mix || 0) / 127;
+    const dVol = (fxDelay.mix || 0) / 127;
+    const rVol = (fxRoom.mix || 0) / 127;
     let L = (dryL + wet * 0.55 * dVol + tankL * 0.28 * rVol) * master;
     let R = (dryR + wetR * 0.55 * dVol + tankR * 0.28 * rVol) * master;
     if (L > 1) L = 1;

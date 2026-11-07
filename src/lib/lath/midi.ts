@@ -1,4 +1,4 @@
-import { CMD } from "./types";
+import { CMD, drumToNib, fxFromNib, fxToNib, drumFromNib } from "./types";
 import type { Project, Scene, Step } from "./types";
 import { persist, useLath } from "./store";
 import { engineMonitor, engineRun, pushProject } from "./audio";
@@ -177,7 +177,7 @@ export function sendDrumLock(pat: number, tr: number, step: number, row: (number
     else {
       if (i < 7) lo |= 1 << i;
       else hi |= 1 << (i - 7);
-      nibs.push(n & 15);
+      nibs.push(drumToNib(i, n));
     }
   }
   send([CMD.lock, pat & 7, tr & 3, step & 31, lo & 127, hi & 7, ...nibs]);
@@ -191,7 +191,7 @@ export function sendFxLock(pat: number, step: number, row: (number | null)[]) {
     if (n == null) nibs.push(0);
     else {
       mask |= 1 << i;
-      nibs.push(n & 15);
+      nibs.push(fxToNib(i, n));
     }
   }
   send([CMD.lock, pat & 7, 0x40, step & 31, mask & 127, ...nibs]);
@@ -343,13 +343,13 @@ function handle(d: number[]) {
     if (!project.stepPar || !project.fxPar) return;
     if (tr === 0x40 && d.length >= 12) {
       const mask = d[4] & 127;
-      for (let i = 0; i < 7; i++) project.fxPar[pat][step][i] = mask & (1 << i) ? d[5 + i] & 15 : null;
+      for (let i = 0; i < 7; i++) project.fxPar[pat][step][i] = mask & (1 << i) ? fxFromNib(i, d[5 + i] & 15) : null;
       applyRemote(project);
       return;
     }
     if (tr < 4 && d.length >= 16) {
       const mask = (d[4] & 127) | ((d[5] & 7) << 7);
-      for (let i = 0; i < 10; i++) project.stepPar[pat][tr][step][i] = mask & (1 << i) ? d[6 + i] & 15 : null;
+      for (let i = 0; i < 10; i++) project.stepPar[pat][tr][step][i] = mask & (1 << i) ? drumFromNib(i, d[6 + i] & 15) : null;
       applyRemote(project);
     }
     return;

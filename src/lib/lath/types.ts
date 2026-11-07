@@ -81,6 +81,8 @@ export type Project = {
   pending: number;
   /** 1 once the effect mix knobs have been turned into return volumes. */
   returns?: number;
+  /** 1 once per-step locks store full knob values, not 4-bit nibbles. */
+  locksFull?: number;
   /**
    * Per-step locks. null follows the preset.
    * Drum: [pattern][track 0-3][step 0-31][10 nibbles].
